@@ -1,6 +1,7 @@
 # db_utils.py
 import mysql.connector
 import pandas as pd
+import streamlit as st
 from db_config import DB_CONFIG
 
 # === Connection Helper ===
@@ -9,6 +10,18 @@ def get_mysql_connection(db_name=None):
     if db_name:
         db_config["database"] = db_name
     return mysql.connector.connect(**db_config)
+
+def get_db_connection():
+    if "db_name" not in st.session_state:
+        st.error("No database selected. Please log in again.")
+        st.stop()
+
+    return mysql.connector.connect(
+        host=HOST,
+        user=USER,
+        password=PASSWORD,
+        database=st.session_state["db_name"]
+    )
 
 # === Initialization ===
 def init_db():
