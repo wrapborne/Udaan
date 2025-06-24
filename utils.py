@@ -42,6 +42,9 @@ def get_agency_year_ranges(start_date_str):
 
 def handle_registration(username, password, do_code, role, name, agency_code=None):
     username_clean = username.strip().upper()
+    if do_code is None:
+        st.error("❌ DO Code is missing.")
+        return
     do_code_clean = do_code.strip().upper()
 
     # 🚫 Validate basic fields
