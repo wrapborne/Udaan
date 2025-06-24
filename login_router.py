@@ -41,8 +41,9 @@ def login_view():
                 st.error("Invalid username or password.")
                 if user_exists(username):
                     log_failed_attempt(username)
-
-        if st.session_state.get("logged_in"):
+                    
+# 🔓 This sidebar should not be inside the form
+if st.session_state.get("logged_in"):
             from layout import render_sidebar
             render_sidebar()
             
