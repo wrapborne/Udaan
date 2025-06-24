@@ -83,10 +83,11 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
             return
 
         try:
-            with get_mysql_connection(admin_data["db_name"]) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT DISTINCT `Agency Code` FROM lic_data")
-                agency_codes = [row[0].strip().upper() for row in cursor.fetchall()]
+            engine = get_mysql_connection(admin_data["db_name"])
+            with engine.connect() as conn:
+                result = conn.execute("SELECT DISTINCT `Agency Code` FROM lic_data")
+                agency_codes = [row[0].strip().upper() for row in result.fetchall()]
+
 
             if agency_code.strip().upper() not in agency_codes:
                 st.error("❌ Invalid Agency Code. Contact your admin.")
