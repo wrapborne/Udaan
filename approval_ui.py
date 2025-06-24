@@ -3,6 +3,10 @@
 import streamlit as st
 from db_utils import get_pending_users, delete_pending_user, add_user_to_db  # ya aapka jo actual import ho
 
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Please log in to continue.")
+    st.stop()
+
 def show_approval_ui():
     st.header("🚦 Pending User Approvals")
 
