@@ -216,7 +216,15 @@ def show_agent_data(df):
     df.insert(0, "S.No.", range(1, len(df) + 1))
     df["DOC"] = pd.to_datetime(df["DOC"], errors="coerce")
 
+    # Ensure DOC is parsed safely
+    df["DOC"] = pd.to_datetime(df["DOC"], errors="coerce")
+    
     min_doc, max_doc = df["DOC"].min(), df["DOC"].max()
+
+    # Fallback to today's date if invalid
+    if pd.isnull(min_doc) or pd.isnull(max_doc):
+        min_doc = max_doc = datetime.today()
+        
     date_range = st.date_input("🗓️ Filter by DOC", value=(min_doc, max_doc))
     if isinstance(date_range, tuple) and len(date_range) == 2:
         df = df[(df["DOC"] >= pd.to_datetime(date_range[0])) & (df["DOC"] <= pd.to_datetime(date_range[1]))]
