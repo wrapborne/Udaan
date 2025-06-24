@@ -41,17 +41,32 @@ def get_agency_year_ranges(start_date_str):
     return options
 
 def handle_registration(username, password, do_code, role, name, agency_code=None):
-        # 🚫 Validate missing fields
-    if not username:
+    # 🚫 Validate required fields
+    if username is None or not str(username).strip():
         st.error("❌ Username is required.")
         return
-    if not do_code:
+
+    if password is None or not str(password).strip():
+        st.error("❌ Password is required.")
+        return
+
+    if do_code is None or not str(do_code).strip():
         st.error("❌ DO Code is required.")
         return
-    username_clean = username.strip().upper()
-    do_code_clean = do_code.strip().upper()
 
-    # 🚫 Validate basic fields
+    if role not in ("admin", "agent"):
+        st.error("❌ Invalid role selected.")
+        return
+
+    if role == "agent" and (agency_code is None or not str(agency_code).strip()):
+        st.error("❌ Agency Code is required for agent.")
+        return
+
+    # ✅ Clean input
+    username_clean = str(username).strip().upper()
+    do_code_clean = str(do_code).strip().upper()
+
+    # 🔍 Check if username exists
     if user_exists(username_clean):
         st.error("❌ Username already exists.")
         return
@@ -60,45 +75,32 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
         st.warning("⚠️ Password must be at least 4 characters.")
         return
 
+    # === Agent Logic ===
     if role == "agent":
-        if not agency_code:
-            st.error("❌ Agency Code is required for agent.")
-            return
-
-        # 🔎 Lookup admin by DO code
         admin_data = get_admin_by_do_code(do_code_clean)
         if not admin_data:
-            st.error("❌ Invalid DO Code.")
+            st.error("❌ Invalid DO Code. Please check with your admin.")
             return
 
-        # ✅ Check if agency code exists in LIC data using SQL (Option 2)
         try:
-            from db_utils import get_mysql_connection  # Make sure this import is at the top of your file
-
             with get_mysql_connection(admin_data["db_name"]) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT DISTINCT `Agency Code` FROM lic_data")
                 agency_codes = [row[0].strip().upper() for row in cursor.fetchall()]
-    
             if agency_code.strip().upper() not in agency_codes:
                 st.error("❌ Invalid Agency Code. Contact your admin.")
                 return
-
         except Exception as e:
             st.error(f"❌ Failed to validate agency code: {e}")
             return
 
-
         admin_username = admin_data["username"]
         db_name = admin_data["db_name"]
 
+    # === Admin Logic ===
     elif role == "admin":
         admin_username = None
         db_name = f"lic_{username_clean}"
-
-    else:
-        st.error("❌ Unknown role.")
-        return
 
     # ✅ Insert into pending_users
     add_pending_user(
