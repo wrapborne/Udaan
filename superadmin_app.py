@@ -105,11 +105,4 @@ def superadmin_dashboard():
     st.markdown("---")
     show_user_management()
 
-    st.sidebar.button("Logout", on_click=lambda: st.session_state.update({
-        "logged_in": False,
-        "username": "",
-        "role": "",
-        "start_date": "",
-        "admin_username": "",
-        "db_name": ""
-    }))
+
