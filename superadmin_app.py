@@ -11,7 +11,7 @@ def show_user_management():
         st.info("No registered users found.")
         return
 
-    for username, role, start_date in users:
+    for username, role, start_date, *_ in users:
         with st.expander(f"🔸 {username}"):
             if role == "superadmin":
                 st.markdown("✅ Superadmin (cannot modify)")
