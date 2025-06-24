@@ -44,7 +44,7 @@ def login_view():
                     
 # 🔓 This sidebar should not be inside the form
 if st.session_state.get("logged_in"):
-            from layout import render_sidebar
+        from layout import render_sidebar
             render_sidebar()
                 
     col1, col2 = st.columns(2)
