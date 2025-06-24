@@ -21,24 +21,27 @@ def login_view():
         submitted = st.form_submit_button("Login")
 
         if submitted:
-            user = check_credentials(username, password)
+            user = check_credentials(username, password)  # Fetch from 'users' table in 'lic-db'
 
             if user:
                 role = user["role"]
                 agency_code = user.get("agency_code", username)
-                do_code = user.get("do_code", "")  # This must be set at registration
+                do_code = user.get("do_code", "")  # ✅ Pulled from users table
 
-                # Determine DB name
+                # Determine correct database
                 if role == "admin":
                     db_name = f"lic_{username.upper()}"
-                else:  # Agent
+                elif role == "agent":
                     if do_code:
                         db_name = f"lic_{do_code.upper()}"
                     else:
-                        st.error("Agent's DO Code missing. Contact your admin.")
+                        st.error("Agent's DO Code is missing in the database.")
                         return
+                else:
+                    st.error("Invalid user role.")
+                    return
 
-                # Update session
+                # ✅ Store session details
                 st.session_state.update({
                     "logged_in": True,
                     "username": user["username"],
@@ -57,6 +60,7 @@ def login_view():
                 st.error("Invalid username or password.")
                 if user_exists(username):
                     log_failed_attempt(username)
+
                     
     # 🔓 This sidebar should not be inside the form
     if st.session_state.get("logged_in"):
