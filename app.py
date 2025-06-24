@@ -1,7 +1,15 @@
 # app.py (modularized entry point)
 import streamlit as st
 import mysql.connector  # Fails if not installed
-from login_router import route_dashboard
+#from login_router import route_dashboard
+try:
+    from login_router import route_dashboard
+except Exception as e:
+    import streamlit as st
+    st.error(f"Failed to import login_router: {e}")
+    st.stop()
+
+route_dashboard()
 
 st.set_page_config(
     layout="centered",
