@@ -225,7 +225,7 @@ def show_agent_data(df):
     if pd.isnull(min_doc) or pd.isnull(max_doc):
         min_doc = max_doc = datetime.today()
         
-    date_range = st.date_input("🗓️ Filter by DOC", value=(min_doc, max_doc, key="date_filter"))
+    date_range = st.date_input("🗓️ Filter by DOC", value=(min_doc, max_doc), key="date_filter")
     if isinstance(date_range, tuple) and len(date_range) == 2:
         df = df[(df["DOC"] >= pd.to_datetime(date_range[0])) & (df["DOC"] <= pd.to_datetime(date_range[1]))]
 
