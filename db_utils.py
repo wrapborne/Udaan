@@ -37,7 +37,8 @@ def init_db():
                 admin_username VARCHAR(100),
                 db_name VARCHAR(200),
                 do_code VARCHAR(100),
-                agency_code VARCHAR(100)
+                agency_code VARCHAR(100),
+                name VARCHAR()
             )
         """)
 
@@ -50,7 +51,8 @@ def init_db():
                 admin_username VARCHAR(100),
                 db_name VARCHAR(200),
                 do_code VARCHAR(100),
-                agency_code VARCHAR(100)
+                agency_code VARCHAR(100),
+                name VARCHAR()
             )
         """)
 
@@ -110,13 +112,13 @@ def get_user(username):
         cursor.execute("SELECT * FROM users WHERE username = %s", (username.upper(),))
         return cursor.fetchone()
 
-def add_user(username, password, role, start_date=None, admin_username=None, db_name=None, do_code=None, agency_code = None):
+def add_user(username, password, role, start_date=None, admin_username=None, db_name=None, do_code=None, agency_code = None, name = None):
     with get_mysql_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO users (username, password, role, start_date, admin_username, db_name, do_code, agency_code)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (username.upper(), password, role, start_date, admin_username, db_name, do_code, agency_code))
+            INSERT INTO users (username, password, role, start_date, admin_username, db_name, do_code, agency_code, name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (username.upper(), password, role, start_date, admin_username, db_name, do_code, agency_code, name))
         conn.commit()
 
 def delete_user(username):
@@ -126,19 +128,19 @@ def delete_user(username):
         conn.commit()
 
 # === Pending Registration ===
-def add_pending_user(username, password, role, admin_username, db_name, do_code = None, agency_code = None):
+def add_pending_user(username, password, role, admin_username, db_name, do_code = None, agency_code = None, name):
     with get_mysql_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO pending_users (username, password, role, admin_username, db_name, do_code, agency_code)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (username.upper(), password, role, admin_username, db_name, do_code, agency_code))
+            INSERT INTO pending_users (username, password, role, admin_username, db_name, do_code, agency_code, name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (username.upper(), password, role, admin_username, db_name, do_code, agency_code, name))
         conn.commit()
 
 def get_pending_users():
     with get_mysql_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, password, role, admin_username, db_name, do_code, agency_code FROM pending_users")
+        cursor.execute("SELECT id, username, password, role, admin_username, db_name, do_code, agency_code, name FROM pending_users")
         return cursor.fetchall()
 
 def delete_pending_user(rowid):
@@ -171,7 +173,7 @@ def load_users():
 
 def get_all_users():
     with get_mysql_connection() as conn:
-        df = pd.read_sql("SELECT username, role, start_date, do_code FROM users", conn)
+        df = pd.read_sql("SELECT username, role, start_date, do_code, namen agency_code FROM users", conn)
         return df.values.tolist()
 
 def update_user_role_and_start(username, new_role, new_start_date):
