@@ -60,55 +60,70 @@ def upload_lic_data(uploaded_file):
             os.remove("latest_uploaded.txt")
 
 def upload_premium_summary(premium_file):
+    if "db_name" not in st.session_state:
+        st.error("🔒 Login required. Please log in again.")
+        st.stop()
+
     try:
+        # 1. Save uploaded file temporarily
         with open("temp_premium_upload", "wb") as f:
             f.write(premium_file.getbuffer())
 
+        # 2. Extract data based on file type
         if premium_file.name.endswith(".pdf"):
             premium_df = extract_from_pdf("temp_premium_upload")
         else:
             premium_df = extract_from_txt("temp_premium_upload")
 
+        # 3. Clean and prepare data
         premium_df.rename(columns={"Report Month": "report_month"}, inplace=True)
         premium_df["agency_code"] = premium_df["Agency Code"].str.strip().str.upper()
         premium_df["uploaded_by"] = st.session_state.username
 
-        db_name = st.session_state.db_name
-        engine = get_mysql_connection(db_name)
+        # 4. Connect to correct DO database
+        engine = get_mysql_connection(st.session_state["db_name"])
         report_month = premium_df["report_month"].iloc[0]
+
+        # 5. Check if data already exists for this month + uploader
         existing = pd.read_sql(
             "SELECT * FROM premium_summary WHERE report_month = %s AND uploaded_by = %s",
             engine,
             params=(report_month, st.session_state.username)
         )
 
+        check_cols = ["agency_code", "report_month", "total_premium", "fp_sch_prem", "fy_sch_prem", "uploaded_by"]
+
         if not existing.empty:
-            # Check if all rows match (ignoring DB indices)
-            check_cols = ["agency_code", "report_month", "total_premium", "fp_sch_prem", "fy_sch_prem", "uploaded_by"]
+            # Compare old vs new
             existing_sorted = existing[check_cols].sort_values(by=check_cols).reset_index(drop=True)
             new_sorted = premium_df[check_cols].sort_values(by=check_cols).reset_index(drop=True)
 
             if existing_sorted.equals(new_sorted):
-                # Same data — overwrite
+                # Exact match — overwrite
                 with engine.begin() as conn:
-                    conn.execute("DELETE FROM premium_summary WHERE report_month = %s AND uploaded_by = %s", (report_month, st.session_state.username))
+                    conn.execute(
+                        "DELETE FROM premium_summary WHERE report_month = %s AND uploaded_by = %s",
+                        (report_month, st.session_state.username)
+                    )
                 premium_df[check_cols].to_sql("premium_summary", con=engine, if_exists="append", index=False)
                 st.success(f"♻️ Existing data for {report_month} matched — overwritten.")
             else:
+                # Conflict — show warning and checkbox
                 st.warning(f"⚠️ Data for {report_month} already exists and does not match. Upload skipped.")
-                if st.checkbox(f"☑️ Override anyway for {report_month}", key=f"override_{report_month}"):
+
+                if st.checkbox(f"☑️ Force overwrite data for {report_month}", key=f"override_{report_month}"):
+                    from sqlalchemy import text
                     with engine.connect() as conn:
-                        from sqlalchemy import text
                         delete_stmt = text("DELETE FROM premium_summary WHERE report_month = :rm AND uploaded_by = :up")
                         conn.execute(delete_stmt, {"rm": report_month, "up": st.session_state.username})
+
                     premium_df[check_cols].to_sql("premium_summary", con=engine, if_exists="append", index=False)
                     st.success(f"✅ Data for {report_month} forcibly overwritten.")
         else:
-            premium_df[["agency_code", "report_month", "total_premium", "fp_sch_prem", "fy_sch_prem", "uploaded_by"]].to_sql(
-                "premium_summary", con=engine, if_exists="append", index=False
-            )
+            # New data — insert directly
+            premium_df[check_cols].to_sql("premium_summary", con=engine, if_exists="append", index=False)
             st.success("✅ Premium summary uploaded and saved.")
-        st.success("✅ Premium summary uploaded and saved.")
+            
     except Exception as e:
         st.error(f"❌ Failed to process premium file: {e}")
 
