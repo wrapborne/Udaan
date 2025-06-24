@@ -4,6 +4,7 @@ import streamlit as st
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from db_config import DB_CONFIG
+from db_utils import get_mysql_connection
 
 # utils.py or logging_utils.py
 from datetime import datetime
@@ -136,10 +137,12 @@ def get_mysql_connection(db_name=None):
     )
 
 def load_lic_data_from_db():
-    """Loads lic_data from the currently logged-in user's database."""
-    from streamlit import session_state as ss
-    engine = get_mysql_connection(ss.db_name)
-    df = pd.read_sql("SELECT * FROM lic_data", con=engine)
+    engine = get_mysql_connection(st.session_state["db_name"])
+    try:
+        df = pd.read_sql("SELECT * FROM lic_data", con=engine)
+    except Exception as e:
+        st.error(f"Failed to load data: {e}")
+        df = pd.DataFrame()
     return df
 
 def get_policy_count_by_plan(df):
