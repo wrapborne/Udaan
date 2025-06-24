@@ -74,7 +74,7 @@ def login_view():
                         username=username,
                         password=password,
                         do_code=do_code,
-                        role="admin",
+                        role=selected_role.lower(),
                         name=full_name
                     )
 
@@ -91,7 +91,7 @@ def login_view():
                         username=username,
                         password=password,
                         do_code=do_code,
-                        role="agent",
+                        role=selected_role.lower(),
                         name=full_name,
                         agency_code=agency_code
                     )
