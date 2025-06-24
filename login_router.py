@@ -82,27 +82,27 @@ def login_view():
 
         selected_role = st.selectbox("Registering as:", ["-- Select --", "Agent", "Admin"], key="role_selector")
 
-            if selected_role == "Admin":
-                with st.form("admin_register_form"):
-                    full_name = st.text_input("Full Name")
-                    do_code = st.text_input("DO Code")
-                    password = st.text_input("Password", type="password")
-                    submitted = st.form_submit_button("Register")
+        if selected_role == "Admin":
+            with st.form("admin_register_form"):
+                full_name = st.text_input("Full Name")
+                do_code = st.text_input("DO Code")
+                password = st.text_input("Password", type="password")
+                 submitted = st.form_submit_button("Register")
 
-                    if submitted:
-                        if not all([full_name, do_code, password]):
-                            st.warning("⚠️ All fields are required.")
-                        elif user_exists(do_code):  # Login via DO Code only now
-                            st.error("❌ This DO code is already registered.")
-                        else:
-                            add_pending_user(
-                                username=do_code,
-                                password=password,
-                                role="admin",
-                                full_name=full_name,
-                                agency_code="",        # not applicable for admin
-                                admin_username=do_code  # DO Code acts as own admin username
-                            )
+                if submitted:
+                    if not all([full_name, do_code, password]):
+                        st.warning("⚠️ All fields are required.")
+                    elif user_exists(do_code):  # Login via DO Code only now
+                         st.error("❌ This DO code is already registered.")
+                    else:
+                         add_pending_user(
+                             username=do_code,
+                             password=password,
+                             role="admin",
+                             full_name=full_name,
+                             agency_code="",        # not applicable for admin
+                             admin_username=do_code  # DO Code acts as own admin username
+                         )
                             st.success("✅ Admin registration submitted. Awaiting approval.")
 
 
