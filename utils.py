@@ -85,7 +85,7 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
         try:
             engine = get_mysql_connection(admin_data["db_name"])
             with engine.connect() as conn:
-                result = conn.execute("SELECT DISTINCT `Agency Code` FROM lic_data")
+                result = conn.execute(text("SELECT DISTINCT `Agency Code` FROM lic_data"))
                 agency_codes = [row[0].strip().upper() for row in result.fetchall()]
 
 
