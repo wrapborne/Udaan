@@ -23,6 +23,9 @@ def show_approval_ui():
             st.text(f"DB Name: {db_name}")
             
             if st.button(f"✅ Approve {username}", key=f"approve_{row_id}"):
+                if role == "admin":
+                    create_do_database(do_code)
+                    
                 try:
                     add_user_to_db(
                         username=username.upper(),
