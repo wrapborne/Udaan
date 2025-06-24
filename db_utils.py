@@ -45,14 +45,33 @@ def init_db():
         """)
         conn.commit()
 
-# === User Authentication ===
 def check_credentials(username, password):
-    with get_mysql_connection() as conn:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT * FROM users WHERE username = %s AND password = %s
-        """, (username.upper(), password.strip()))
-        return cursor.fetchone()
+    import mysql.connector
+
+    conn = mysql.connector.connect(
+        host=HOST,
+        user=USER,
+        password=PASSWORD,
+        database="lic-db"  # Central DB where all user credentials are stored
+    )
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "SELECT * FROM approved_users WHERE username = %s AND password = %s",
+        (username, password)
+    )
+    user = cursor.fetchone()
+    conn.close()
+
+    if user:
+        do_code = user['do_code']  # Ensure this column exists in your approved_users table
+        st.session_state['username'] = user['username']
+        st.session_state['role'] = user['role']
+        st.session_state['agency_code'] = user['agency_code']
+        st.session_state['current_db'] = f"lic_{do_code}"  # 👈 Main point: route to DO’s DB
+        return True
+    else:
+        return False
 
 def user_exists(username):
     with get_mysql_connection() as conn:
