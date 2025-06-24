@@ -5,7 +5,7 @@ from utils import get_agency_year_ranges, get_financial_year_options
 
 def render_sidebar():
     role = st.session_state.get("role", "")
-    full_name = st.session_state.get("name", st.session_state.get("username", "User")).title()
+    full_name = st.session_state.get("full_name", st.session_state.get("username", "User")).title()
 
     st.sidebar.title("🌟 Welcome")
 
