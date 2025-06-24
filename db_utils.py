@@ -135,7 +135,7 @@ def load_users():
 
 def get_all_users():
     with get_mysql_connection() as conn:
-        df = pd.read_sql("SELECT username, role, start_date, do_code, name FROM users", conn)
+        df = pd.read_sql("SELECT username, role, start_date, do_code, FROM users", conn)
         return df.values.tolist()
 
 def update_user_role_and_start(username, new_role, new_start_date):
