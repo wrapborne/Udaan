@@ -42,19 +42,19 @@ def login_view():
                 if user_exists(username):
                     log_failed_attempt(username)
                     
-# 🔓 This sidebar should not be inside the form
-if st.session_state.get("logged_in"):
-            from layout import render_sidebar
-            render_sidebar()
-            
-col1, col2 = st.columns(2)
+    # 🔓 This sidebar should not be inside the form
+    if st.session_state.get("logged_in"):
+                from layout import render_sidebar
+                render_sidebar()
+                
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.button("🔑 Forgot Password", on_click=lambda: st.info("Coming soon."))
 
-with col1:
-    st.button("🔑 Forgot Password", on_click=lambda: st.info("Coming soon."))
-
-with col2:
-    if st.button("🌞 New Registration"):
-        st.session_state.show_registration_form = not st.session_state.show_registration_form
+    with col2:
+        if st.button("🌞 New Registration"):
+            st.session_state.show_registration_form = not st.session_state.show_registration_form
 
     # 🚪 Show registration form if toggled
     if st.session_state.get("show_registration_form", False):
