@@ -1,4 +1,3 @@
-# login_router.py
 import streamlit as st
 from superadmin_app import superadmin_dashboard
 from admin_app import admin_dashboard
@@ -9,8 +8,6 @@ from utils import log_login
 from utils import handle_registration  # or from auth_utils if you moved it there
 from layout import render_sidebar
 #render_sidebar()
-
-
 
 def login_view():
     st.title("🔐 LIC Udaan Login")
@@ -62,13 +59,12 @@ def login_view():
                 if user_exists(login_code):
                     log_failed_attempt(login_code)
 
-                    
     # 🔓 This sidebar should not be inside the form
     if st.session_state.get("logged_in"):
         render_sidebar()
-                
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.button("🔑 Forgot Password", on_click=lambda: st.info("Coming soon."))
 
@@ -93,43 +89,41 @@ def login_view():
                     if not all([full_name, do_code, password]):
                         st.warning("⚠️ All fields are required.")
                     elif user_exists(do_code):  # Login via DO Code only now
-                         st.error("❌ This DO code is already registered.")
+                        st.error("❌ This DO code is already registered.")
                     else:
-                         add_pending_user(
-                             username=do_code,
-                             password=password,
-                             role="admin",
-                             full_name=full_name,
-                             agency_code="",        # not applicable for admin
-                             admin_username=do_code  # DO Code acts as own admin username
-                         )
-                            st.success("✅ Admin registration submitted. Awaiting approval.")
+                        add_pending_user(
+                            username=do_code,
+                            password=password,
+                            role="admin",
+                            full_name=full_name,
+                            agency_code="",        # not applicable for admin
+                            admin_username=do_code  # DO Code acts as own admin username
+                        )
+                        st.success("✅ Admin registration submitted. Awaiting approval.")
 
+        elif selected_role == "Agent":
+            with st.form("agent_register_form"):
+                full_name = st.text_input("Full Name")
+                agency_code = st.text_input("Agency Code")
+                password = st.text_input("Password", type="password")
+                do_code = st.text_input("DO Code (provided by your Admin)")
+                submitted = st.form_submit_button("Register")
 
-    elif selected_role == "Agent":
-        with st.form("agent_register_form"):
-            full_name = st.text_input("Full Name")
-            agency_code = st.text_input("Agency Code")
-            password = st.text_input("Password", type="password")
-            do_code = st.text_input("DO Code (provided by your Admin)")
-            submitted = st.form_submit_button("Register")
-
-            if submitted:
-                if not all([full_name, agency_code, password, do_code]):
-                    st.warning("⚠️ All fields are required.")
-                elif user_exists(agency_code):  # Login via Agency Code only now
-                    st.error("❌ This agency code is already registered.")
-                else:
-                    add_pending_user(
-                        username=agency_code,
-                        password=password,
-                        role="agent",
-                        full_name=full_name,
-                        agency_code=agency_code,
-                        admin_username=do_code.upper()
-                    )
-                    st.success("✅ Registration submitted. Awaiting approval.")
-
+                if submitted:
+                    if not all([full_name, agency_code, password, do_code]):
+                        st.warning("⚠️ All fields are required.")
+                    elif user_exists(agency_code):  # Login via Agency Code only now
+                        st.error("❌ This agency code is already registered.")
+                    else:
+                        add_pending_user(
+                            username=agency_code,
+                            password=password,
+                            role="agent",
+                            full_name=full_name,
+                            agency_code=agency_code,
+                            admin_username=do_code.upper()
+                        )
+                        st.success("✅ Registration submitted. Awaiting approval.")
 
 def route_dashboard():
     if not st.session_state.get("logged_in"):
