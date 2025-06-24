@@ -16,21 +16,21 @@ def login_view():
     st.title("🔐 LIC Udaan Login")
 
     with st.form("login_form"):
-        username = st.text_input("Agency Code (Username)")
+        login_code = st.text_input("Agency Code / DO Code")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Login")
 
         if submitted:
-            user = check_credentials(username, password)  # Fetch from 'users' table in 'lic-db'
+            user = check_credentials(login_code, password)  # Fetch from 'users' table in 'lic-db'
 
             if user:
                 role = user["role"]
-                agency_code = user.get("agency_code", username)
+                agency_code = user.get("agency_code", login_code)
                 do_code = user.get("do_code", "")  # ✅ Pulled from users table
 
                 # Determine correct database
                 if role == "admin":
-                    db_name = f"lic_{username.upper()}"
+                    db_name = f"lic_{login_code.upper()}"
                 elif role == "agent":
                     if do_code:
                         db_name = f"lic_{do_code.upper()}"
@@ -44,7 +44,7 @@ def login_view():
                 # ✅ Store session details
                 st.session_state.update({
                     "logged_in": True,
-                    "username": user["username"],
+                    "username": user["login_code"],
                     "role": role,
                     "start_date": user.get("start_date", ""),
                     "admin_username": user.get("admin_username", ""),
@@ -52,14 +52,14 @@ def login_view():
                     "agency_code": agency_code,
                 })
 
-                reset_failed_attempts(username)
-                log_login(username)
+                reset_failed_attempts(login_code)
+                log_login(login_code)
                 st.rerun()
 
             else:
                 st.error("Invalid username or password.")
-                if user_exists(username):
-                    log_failed_attempt(username)
+                if user_exists(login_code):
+                    log_failed_attempt(login_code)
 
                     
     # 🔓 This sidebar should not be inside the form
@@ -81,40 +81,53 @@ def login_view():
 
         selected_role = st.selectbox("Registering as:", ["-- Select --", "Agent", "Admin"], key="role_selector")
 
-        if selected_role == "Admin":
-            with st.form("admin_register_form"):
-                full_name = st.text_input("Full Name", key="admin_name")
-                username = st.text_input("Create Username", key="admin_username")
-                password = st.text_input("Password", type="password", key="admin_pass")
-                do_code = st.text_input("Create a DO Code", key="admin_do_code")
+            if selected_role == "Admin":
+                with st.form("admin_register_form"):
+                    full_name = st.text_input("Full Name")
+                    do_code = st.text_input("DO Code")
+                    password = st.text_input("Password", type="password")
+                    submitted = st.form_submit_button("Register")
 
-                if st.form_submit_button("Submit Admin Registration"):
-                    st.write("Admin Reg Vars:", username, password, do_code, selected_role.lower(), full_name)
-                    handle_registration(
-                        username=username,
+                    if submitted:
+                        if not all([full_name, do_code, password]):
+                            st.warning("⚠️ All fields are required.")
+                        elif user_exists(do_code):  # Login via DO Code only now
+                            st.error("❌ This DO code is already registered.")
+                        else:
+                            add_pending_user(
+                                username=do_code,
+                                password=password,
+                                role="admin",
+                                full_name=full_name,
+                                agency_code="",        # not applicable for admin
+                                admin_username=do_code  # DO Code acts as own admin username
+                            )
+                            st.success("✅ Admin registration submitted. Awaiting approval.")
+
+
+    elif selected_role == "Agent":
+        with st.form("agent_register_form"):
+            full_name = st.text_input("Full Name")
+            agency_code = st.text_input("Agency Code")
+            password = st.text_input("Password", type="password")
+            do_code = st.text_input("DO Code (provided by your Admin)")
+            submitted = st.form_submit_button("Register")
+
+            if submitted:
+                if not all([full_name, agency_code, password, do_code]):
+                    st.warning("⚠️ All fields are required.")
+                elif user_exists(agency_code):  # Login via Agency Code only now
+                    st.error("❌ This agency code is already registered.")
+                else:
+                    add_pending_user(
+                        username=agency_code,
                         password=password,
-                        do_code=do_code,
-                        role=selected_role.lower(),
-                        name=full_name
+                        role="agent",
+                        full_name=full_name,
+                        agency_code=agency_code,
+                        admin_username=do_code.upper()
                     )
-
-        elif selected_role == "Agent":
-            with st.form("agent_register_form"):
-                full_name = st.text_input("Full Name", key="agent_name")
-                agency_code = st.text_input("Agency Code", key="agent_agency")
-                username = st.text_input("Create Username", key="agent_username")
-                password = st.text_input("Password", type="password", key="agent_pass")
-                do_code = st.text_input("DO Code (provided by your Admin)", key="agent_do_code")
-
-                if st.form_submit_button("Submit Agent Registration"):
-                    handle_registration(
-                        username=username,
-                        password=password,
-                        do_code=do_code,
-                        role=selected_role.lower(),
-                        name=full_name,
-                        agency_code=agency_code
-                    )
+                    st.success("✅ Registration submitted. Awaiting approval.")
 
 
 def route_dashboard():
