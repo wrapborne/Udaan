@@ -189,3 +189,57 @@ def update_user_role_and_start(username, new_role, new_start_date):
             WHERE username = %s
         """, (new_role, new_start_date, username.upper()))
         conn.commit()
+        
+# === Auto-create DO DB ===
+def create_do_database(do_code):
+    db_name = f"lic_{do_code.upper()}"
+
+    # Step 1: Create the database
+    with get_mysql_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
+        conn.commit()
+
+    # Step 2: Create tables in the new DO DB
+    with get_mysql_connection(db_name) as conn:
+        cursor = conn.cursor()
+
+        # lic_data
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lic_data (
+                policy_no VARCHAR(50) PRIMARY KEY,
+                name VARCHAR(255),
+                plan VARCHAR(50),
+                mode VARCHAR(50),
+                doc DATE,
+                ananda VARCHAR(10)
+            )
+        """)
+
+        # premium_summary
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS premium_summary (
+                agency_code VARCHAR(100),
+                report_month VARCHAR(20),
+                total_premium FLOAT,
+                fp_sch_prem FLOAT,
+                fy_sch_prem FLOAT,
+                uploaded_by VARCHAR(100)
+            )
+        """)
+
+        # approved_users
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS approved_users (
+                username VARCHAR(100) PRIMARY KEY,
+                password VARCHAR(100),
+                role VARCHAR(50),
+                start_date DATE,
+                admin_username VARCHAR(100),
+                db_name VARCHAR(200),
+                do_code VARCHAR(100),
+                agency_code VARCHAR(100),
+                full_name VARCHAR(255)
+            )
+        """)
+        conn.commit()
