@@ -35,7 +35,9 @@ def init_db():
                 role VARCHAR(50) NOT NULL,
                 start_date DATE,
                 admin_username VARCHAR(100),
-                db_name VARCHAR(200)
+                db_name VARCHAR(200),
+                do_code VARCHAR(100),
+                agency_code VARCHAR(100)
             )
         """)
 
@@ -46,7 +48,9 @@ def init_db():
                 password VARCHAR(100),
                 role VARCHAR(50),
                 admin_username VARCHAR(100),
-                db_name VARCHAR(200)
+                db_name VARCHAR(200),
+                do_code VARCHAR(100),
+                agency_code VARCHAR(100)
             )
         """)
 
