@@ -22,21 +22,37 @@ def login_view():
 
         if submitted:
             user = check_credentials(username, password)
-            if user:
-                db_name = user.get("db_name", f"lic_{username.upper()}").replace(".db", "")
 
+            if user:
+                role = user["role"]
+                agency_code = user.get("agency_code", username)
+                do_code = user.get("do_code", "")  # This must be set at registration
+
+                # Determine DB name
+                if role == "admin":
+                    db_name = f"lic_{username.upper()}"
+                else:  # Agent
+                    if do_code:
+                        db_name = f"lic_{do_code.upper()}"
+                    else:
+                        st.error("Agent's DO Code missing. Contact your admin.")
+                        return
+
+                # Update session
                 st.session_state.update({
                     "logged_in": True,
                     "username": user["username"],
-                    "role": user["role"],
+                    "role": role,
                     "start_date": user.get("start_date", ""),
                     "admin_username": user.get("admin_username", ""),
                     "db_name": db_name,
-                    "agency_code": user.get("agency_code", user["username"]) if user["role"] == "agent" else ""
+                    "agency_code": agency_code,
                 })
+
                 reset_failed_attempts(username)
                 log_login(username)
                 st.rerun()
+
             else:
                 st.error("Invalid username or password.")
                 if user_exists(username):
