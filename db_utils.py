@@ -138,9 +138,13 @@ def add_pending_user(username, password, role, admin_username, db_name, do_code 
         conn.commit()
 
 def get_pending_users():
-    with get_mysql_connection() as conn:
+    with get_mysql_connection("lic-db") as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, password, role, admin_username, db_name, do_code, agency_code, name FROM pending_users")
+        cursor.execute("""
+            SELECT id, username, password, role, admin_username, db_name, do_code, agency_code, name 
+            FROM pending_users
+            WHERE approved = 0
+        """)
         return cursor.fetchall()
 
 def delete_pending_user(rowid):
