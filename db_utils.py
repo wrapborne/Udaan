@@ -57,14 +57,14 @@ def check_credentials(username, password):
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute(
-        "SELECT * FROM approved_users WHERE username = %s AND password = %s",
+        "SELECT * FROM users WHERE username = %s AND password = %s",
         (username, password)
     )
     user = cursor.fetchone()
     conn.close()
 
     if user:
-        do_code = user['do_code']  # Ensure this column exists in your approved_users table
+        do_code = user['do_code']  # Ensure this column exists in your users table
         st.session_state['username'] = user['username']
         st.session_state['role'] = user['role']
         st.session_state['agency_code'] = user['agency_code']
