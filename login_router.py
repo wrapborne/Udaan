@@ -87,7 +87,7 @@ def login_view():
                 full_name = st.text_input("Full Name")
                 do_code = st.text_input("DO Code")
                 password = st.text_input("Password", type="password")
-                 submitted = st.form_submit_button("Register")
+                submitted = st.form_submit_button("Register")
 
                 if submitted:
                     if not all([full_name, do_code, password]):
