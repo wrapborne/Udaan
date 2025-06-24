@@ -162,8 +162,8 @@ def show_user_management():
     if not users:
         st.info("No registered users found.")
         return
-    for username, role, start_date, do_code in users:
-        if username == st.session_state.username:
+    for full_name, role, start_date, do_code in users:
+        if full_name == st.session_state.full_name:
             continue  # 🔒 Skip logged-in user
         if st.session_state.role != "superadmin" and role == "superadmin":
             continue  # 🔒 Hide superadmin from admins
