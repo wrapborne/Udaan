@@ -225,21 +225,21 @@ def show_agent_data(df):
     if pd.isnull(min_doc) or pd.isnull(max_doc):
         min_doc = max_doc = datetime.today()
         
-    date_range = st.date_input("🗓️ Filter by DOC", value=(min_doc, max_doc))
+    date_range = st.date_input("🗓️ Filter by DOC", value=(min_doc, max_doc, key="date_filter"))
     if isinstance(date_range, tuple) and len(date_range) == 2:
         df = df[(df["DOC"] >= pd.to_datetime(date_range[0])) & (df["DOC"] <= pd.to_datetime(date_range[1]))]
 
     plan_options = ["All Plans"] + sorted(df["Plan"].dropna().astype(str).unique().tolist())
-    selected_plan = st.selectbox("📋 Filter by Plan", plan_options)
+    selected_plan = st.selectbox("📋 Filter by Plan", plan_options, key="plan_filter")
     if selected_plan != "All Plans":
         df = df[df["Plan"].astype(str) == selected_plan]
 
     mode_options = ["All Modes"] + sorted(df["Mode"].dropna().astype(str).unique().tolist())
-    selected_mode = st.selectbox("💼 Filter by Mode", mode_options)
+    selected_mode = st.selectbox("💼 Filter by Mode", mode_options, key="mode_filter")
     if selected_mode != "All Modes":
         df = df[df["Mode"].astype(str) == selected_mode]
 
-    search = st.text_input("🔍 Search")
+    search = st.text_input("🔍 Search", key="search_filter")
     if search:
         df = df[df.apply(lambda row: search.lower() in str(row).lower(), axis=1)]
 
