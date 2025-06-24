@@ -47,7 +47,7 @@ if st.session_state.get("logged_in"):
             from layout import render_sidebar
             render_sidebar()
             
-    col1, col2 = st.columns(2)
+col1, col2 = st.columns(2)
 
     with col1:
         st.button("🔑 Forgot Password", on_click=lambda: st.info("Coming soon."))
