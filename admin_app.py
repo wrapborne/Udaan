@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import os
 from datetime import datetime, date
 from extract_premium_summary import extract_from_pdf, extract_from_txt
 from extractor import extract_all_lic_data
@@ -14,26 +15,49 @@ from data_display_column import ADMIN_DISPLAY_COLUMNS as DISPLAY_COLUMNS
 
 # --- File Upload Handlers ---
 def upload_lic_data(uploaded_file):
+    if "db_name" not in st.session_state:
+        st.error("🔒 Please log in first.")
+        return
+
+    # 1. Save uploaded file temporarily
     with open("latest_uploaded.txt", "wb") as f:
         f.write(uploaded_file.getbuffer())
 
+    # 2. Extract data using your custom logic
     new_data = extract_all_lic_data("latest_uploaded.txt")
     if new_data.empty:
         st.warning("⚠️ No valid data found in uploaded file.")
         return
 
-    db_name = st.session_state.db_name
+    db_name = st.session_state["db_name"]
     engine = get_mysql_connection(db_name)
 
     try:
-        old_data = pd.read_sql("SELECT * FROM lic_data", con=engine)
-    except:
-        old_data = pd.DataFrame()
+        # 3. Read existing data (if table exists)
+        try:
+            old_data = pd.read_sql("SELECT * FROM lic_data", con=engine)
+        except Exception:
+            old_data = pd.DataFrame()
 
-    combined = pd.concat([old_data, new_data]).drop_duplicates(subset=["Policy No"], keep="last")
-    combined.to_sql("lic_data", con=engine, if_exists="replace", index=False)
-    st.success(f"✅ {len(combined)} proposals saved.")
+        # 4. Combine and deduplicate
+        combined = pd.concat([old_data, new_data]).drop_duplicates(subset=["Policy No"], keep="last")
 
+        # Optional: Add uploader info
+        if "uploaded_by" not in combined.columns:
+            combined["uploaded_by"] = st.session_state["username"]
+
+        # 5. Save to MySQL (full overwrite — OK if only 1 agent per DB)
+        combined.to_sql("lic_data", con=engine, if_exists="replace", index=False)
+
+        st.success(f"✅ {len(combined)} proposals saved successfully.")
+
+    except Exception as e:
+        st.error(f"❌ Failed to save data: {e}")
+
+    finally:
+        # 6. Cleanup file
+        if os.path.exists("latest_uploaded.txt"):
+            os.remove("latest_uploaded.txt")
 
 def upload_premium_summary(premium_file):
     try:
