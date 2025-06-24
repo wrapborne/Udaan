@@ -69,7 +69,7 @@ def login_view():
                 do_code = st.text_input("Create a DO Code", key="admin_do_code")
 
                 if st.form_submit_button("Submit Admin Registration"):
-                    st.write("Admin Reg Vars:", username, password, do_code, role, full_name)
+                    st.write("Admin Reg Vars:", username, password, do_code, selected_role.lower(), full_name)
                     handle_registration(
                         username=username,
                         password=password,
