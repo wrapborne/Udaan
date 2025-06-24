@@ -1,7 +1,7 @@
 # utils.py
 import pandas as pd
 import streamlit as st
-
+from sqlalchemy import text
 from sqlalchemy import create_engine
 from db_config import DB_CONFIG
 
