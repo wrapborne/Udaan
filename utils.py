@@ -111,7 +111,7 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
         admin_username=admin_username,
         db_name=db_name,
         do_code=do_code,
-        gency_code=agency_code.strip().upper() if agency_code else None
+        agency_code=agency_code.strip().upper() if agency_code else None
     )
 
     st.success("✅ Registration submitted. Admin will approve your account.")
