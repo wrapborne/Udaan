@@ -22,10 +22,7 @@ def show_approval_ui():
             st.text(f"DO Code: {do_code or 'N/A'}")
             st.text(f"DB Name: {db_name}")
             
-            if st.button(f"✅ Approve {username}", key=f"approve_{row_id}"):
-                if role == "admin":
-                    create_do_database(do_code)
-                    
+            if st.button(f"✅ Approve {username}", key=f"approve_{row_id}"):                   
                 try:
                     add_user_to_db(
                         username=username.upper(),
@@ -37,6 +34,10 @@ def show_approval_ui():
                         agency_code=agency_code,
                         name=name
                     )
+                    # ✅ Create DO DB if approved user is admin
+                    if role == "admin":
+                        create_do_database(do_code)
+                    
                     delete_pending_user(row_id)
                     st.success(f"✅ {username} approved successfully!")
                     st.experimental_rerun()
