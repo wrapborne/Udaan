@@ -45,6 +45,7 @@ def login_view():
                 st.session_state.update({
                     "logged_in": True,
                     "username": user["login_code"],
+                    "full_name": user.get("full_name", user["login_code"]),  # ✅ Added this line
                     "role": role,
                     "start_date": user.get("start_date", ""),
                     "admin_username": user.get("admin_username", ""),
