@@ -37,10 +37,32 @@ def show_approval_ui():
                     # ✅ Create DO DB if approved user is admin
                     if role == "admin":
                         create_do_database(do_code)
-                    
+
+                    # Step 3: Insert into DO-specific DB (for both agent & admin)
+                    try:
+                        from sqlalchemy import create_engine
+                        from db_config import DB_CONFIG
+                
+                        db_name = f"lic_{do_code.upper()}"
+                        db_url = f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{db_name}"
+                        engine = create_engine(db_url)
+
+                        pd.DataFrame([{
+                            "username": username,
+                            "password": password,
+                            "role": role,
+                            "start_date": pd.Timestamp.today().date(),
+                            "admin_username": admin_username,
+                            "db_name": db_name,
+                            "do_code": do_code,
+                            "agency_code": agency_code,
+                            "full_name": name
+                        }]).to_sql("approved_users", con=engine, if_exists="append", index=False)
+
+                    except Exception as e:
+                        st.error(f"❌ Failed to approve {username}: {e}")
+
                     delete_pending_user(row_id)
-                    st.success(f"✅ {username} approved successfully!")
+                    st.success(f"✅ {username} approved and added successfully!")
                     st.experimental_rerun()
 
-                except Exception as e:
-                    st.error(f"❌ Failed to approve {username}: {e}")
