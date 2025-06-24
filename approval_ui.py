@@ -15,15 +15,13 @@ def show_approval_ui():
     for user in pending_users:
         row_id, username, password, role, admin_username, db_name, do_code, agency_code, name = user
 
-        with st.expander(f"👤 {name} ({username}) - {role}"):
+        with st.expander(f"👤 {name.title()} | {agency_code} - {role.capitalize()}"):
             st.text(f"Username: {username}")
             st.text(f"Role: {role}")
             st.text(f"Admin: {admin_username}")
-            st.text(f"Agency Code: {agency_code or 'N/A'}")
             st.text(f"DO Code: {do_code or 'N/A'}")
             st.text(f"DB Name: {db_name}")
-            st.text(f"Name: {name}")
-
+            
             if st.button(f"✅ Approve {username}", key=f"approve_{row_id}"):
                 try:
                     add_user_to_db(
