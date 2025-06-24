@@ -60,7 +60,7 @@ def show_pending_approvals():
         st.success("✅ No pending admin registrations.")
         return
 
-    for rowid, username, password, role, admin_username, db_name, do_code in pending_admins:
+    for rowid, username, password, role, admin_username, db_name, do_code, agency_code in pending_admins:
         col1, col2, col3 = st.columns([4, 1, 1])
         with col1:
             st.write(f"🔸 **{username}** | Role: `{role}` | DO Code: `{do_code}`")
