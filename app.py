@@ -1,5 +1,6 @@
 # app.py (modularized entry point)
 import streamlit as st
+import mysql.connector  # Fails if not installed
 from login_router import route_dashboard
 
 st.set_page_config(
