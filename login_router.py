@@ -8,7 +8,7 @@ from datetime import datetime
 from utils import log_login
 from utils import handle_registration  # or from auth_utils if you moved it there
 from layout import render_sidebar
-render_sidebar()
+#render_sidebar()
 
 
 
@@ -100,6 +100,9 @@ def route_dashboard():
     if not st.session_state.get("logged_in"):
         login_view()
     else:
+        from layout import render_sidebar
+        render_sidebar()  # ✅ Moved here, only shows after login
+
         role = st.session_state.get("role")
         if role == "superadmin":
             superadmin_dashboard()
@@ -109,7 +112,6 @@ def route_dashboard():
             agent_dashboard()
         else:
             st.error("❌ Unknown role. Contact support.")
-
 # Add this to main app.py
 # from login_router import route_dashboard
 # route_dashboard()
