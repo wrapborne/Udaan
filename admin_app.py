@@ -165,17 +165,10 @@ def show_pending_approvals():
             st.info("✅ No pending agent registrations.")
         else:
             for row in pending:
-                # ✅ Backward-compatible unpacking
-                rowid = row[0]
-                username = row[1]
-                password = row[2]
-                role = row[3]
-                admin_username = row[4]
-                db_name = row[5]
-                do_code = row[6] if len(row) > 6 else None
-                agency_code = row[7] if len(row) > 7 else None
+                rowid, username, password, role, admin_username, db_name, do_code, agency_code, name, approved = row
+                st.write(f"DEBUG: {username=} {do_code=} {agency_code=} {name=}")
 
-                col1, col2 = st.columns([4, 1])
+                col1, col2, col3 = st.columns([4, 1, 1])
                 with col1:
                     st.write(f"🔸 **{username}** | Role: `{role}`")
                 with col2:
@@ -188,40 +181,48 @@ def show_pending_approvals():
                             admin_username=admin_username,
                             db_name=db_name,
                             do_code=do_code,
-                            agency_code=agency_code
+                            agency_code=agency_code,
+                            name=name
                         )
+
                         delete_pending_user(rowid)
                         st.success(f"User `{username}` approved.")
+                        st.rerun()
+                        
+                with col3:
+                    if st.button("❌ Reject", key=f"reject_{rowid}"):
+                        delete_pending_user(rowid)
+                        st.warning(f"❌ User `{username}` rejected.")
                         st.rerun()
 
 
 def show_user_management():
     st.markdown("## 👥 Manage Registered Users")
-    users = get_all_users()
+
+    if st.session_state.role == "admin":
+        users = get_all_users(admin_filter=st.session_state.username)
+    else:
+        users = get_all_users()
+
     if not users:
         st.info("No registered users found.")
         return
-  #  full_name = st.session_state.get("name", st.session_state.get("username", "User")).title()
-    for username, role, start_date, do_code in users:
+
+    for user in users:
+        username, role, start_date, do_code, name, agency_code, admin_username = user
+
         if username == st.session_state.username:
-            continue  # 🔒 Skip logged-in user
+            continue  # Skip self
+
         if st.session_state.role != "superadmin" and role == "superadmin":
-            continue  # 🔒 Hide superadmin from admins
-        with st.expander(f"🔸 {username}"):
-            st.text(f"DO Code: {do_code if do_code else 'N/A'}")
-            if role == "superadmin":
-                st.markdown("🔒 Superadmin role (cannot modify)")
-                continue
+            continue  # Admins should not see superadmin
 
-            st.text("Role: " + role)  # 🔒 Superadmin can't change roles
+        display_name = f"{name} ({username})" if name else username
 
-            if isinstance(start_date, str):
-                parsed_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-            elif isinstance(start_date, datetime):
-                parsed_date = start_date.date()
-            else:
-                parsed_date = start_date if isinstance(start_date, date) else datetime.today().date()
+        with st.expander(f"🔸 {display_name}"):
+            st.markdown(f"**Role:** :green[`{role}`]  **DO Code:** :green[`{do_code or 'N/A'}`]")
 
+            # Start Date input
             if isinstance(start_date, str):
                 start_date_val = datetime.strptime(start_date, "%Y-%m-%d")
             else:
@@ -232,16 +233,16 @@ def show_user_management():
             cols = st.columns(2)
             with cols[0]:
                 if st.button("💾 Save Changes", key=f"save_{username}"):
-                    update_user_role_and_start(username, new_role, new_start_date.strftime("%Y-%m-%d"))
-                    st.success("✅ User updated.")
+                    update_user_role_and_start(username, role, new_start_date.strftime("%Y-%m-%d"))
+                    st.success("✅ Start date updated.")
                     st.rerun()
+
             with cols[1]:
-                if role.lower() != "admin":
-                    if st.checkbox(f"⚠️ Confirm delete {username}", key=f"confirm_delete_{username}"):
-                        if st.button("🗑️ Delete User", key=f"delete_{username}"):
-                            delete_user(username)
-                            st.warning(f"❌ User `{username}` deleted.")
-                            st.rerun()
+                if role != "admin":
+                    if st.button("🗑️ Delete User", key=f"delete_{username}"):
+                        delete_user(username)
+                        st.warning(f"❌ User `{username}` deleted.")
+                        st.rerun()
                 else:
                     st.caption("🔒 Admins can't be deleted.")
 

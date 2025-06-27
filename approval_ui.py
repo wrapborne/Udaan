@@ -3,9 +3,9 @@
 import streamlit as st
 from db_utils import get_pending_users, delete_pending_user, add_user_to_db  # ya aapka jo actual import ho
 
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Please log in to continue.")
-    st.stop()
+#if "logged_in" not in st.session_state or not st.session_state.logged_in:
+#    st.warning("⚠️ Please log in to continue.")
+#    st.stop()
 
 def show_approval_ui():
     st.header("🚦 Pending User Approvals")
@@ -19,7 +19,8 @@ def show_approval_ui():
     for user in pending_users:
         row_id, username, password, role, admin_username, db_name, do_code, agency_code, name = user
 
-        with st.expander(f"👤 {name.title()} | {agency_code} - {role.capitalize()}"):
+        with st.expander(f"👤 {name.title()} (Agency: {agency_code}) | Role: {role.capitalize()}"):
+            st.caption(f"User ID: {row_id}")
             st.text(f"Username: {username}")
             st.text(f"Role: {role}")
             st.text(f"Admin: {admin_username}")
@@ -40,7 +41,11 @@ def show_approval_ui():
                     )
                     # ✅ Create DO DB if approved user is admin
                     if role == "admin":
-                        create_do_database(do_code)
+                        try:
+                            create_do_database(do_code)
+                        except Exception as e:
+                            st.error(f"❌ Failed to create database for DO: {e}")
+
 
                     # Step 3: Insert into DO-specific DB (for both agent & admin)
                     try:

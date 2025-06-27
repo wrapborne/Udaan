@@ -11,13 +11,25 @@ def show_user_management():
         st.info("No registered users found.")
         return
 
-    for username, role, start_date, *_ in users:
-        with st.expander(f"🔸 {username}"):
-            if role == "superadmin":
-                st.markdown("✅ Superadmin (cannot modify)")
-                continue
+    for user in users:
+        print("DEBUG USER ROW:", user)  # 👈 INSERT THIS LINE
+        username, role, start_date, do_code, name, agency_code = user[:6]
 
-            new_role = st.selectbox("Role", ["admin", "agent"], index=["admin", "agent"].index(role), key=f"role_{username}")
+        # ❌ Skip agents – only show admins
+        if role != "admin":
+            continue
+
+        # 🔒 Skip superadmin
+        if role == "superadmin":
+            st.markdown("✅ Superadmin (cannot modify)")
+            continue
+
+        # 👤 Show full name (code)
+        display_name = f"{name} ({username})" if name else username
+
+        with st.expander(f"🔸 {display_name}"):
+            st.markdown(f"**Role:** :green[`{role}`] &nbsp;&nbsp;&nbsp; **DO Code:** :green[`{do_code}`]", unsafe_allow_html=True)
+
             if isinstance(start_date, str):
                 start_date_val = datetime.strptime(start_date, "%Y-%m-%d")
             else:
@@ -29,19 +41,18 @@ def show_user_management():
                 key=f"date_{username}"
             )
 
-
             cols = st.columns(2)
             with cols[0]:
                 if st.button("💾 Save Changes", key=f"save_{username}"):
-                    update_user_role_and_start(username, new_role, new_start_date.strftime("%Y-%m-%d"))
-                    st.success("✅ User updated.")
+                    update_user_role_and_start(username, role, new_start_date.strftime("%Y-%m-%d"))
+                    st.success("✅ Start date updated.")
                     st.rerun()
+
             with cols[1]:
                 if st.button("🗑️ Delete User", key=f"delete_{username}"):
                     delete_user(username)
                     st.warning(f"❌ User `{username}` deleted.")
                     st.rerun()
-
 
 def show_pending_approvals():
     st.subheader("📝 Pending Admin Registrations")
@@ -60,17 +71,18 @@ def show_pending_approvals():
         st.success("✅ No pending admin registrations.")
         return
 
-    for rowid, username, password, role, admin_username, db_name, do_code, agency_code in pending_admins:
+    for row in pending_admins:
+        rowid, username, password, role, admin_username, db_name, do_code, agency_code, name = row
         col1, col2, col3 = st.columns([4, 1, 1])
         with col1:
-            st.write(f"🔸 **{username}** | Role: `{role}` | DO Code: `{do_code}`")
+            st.write(f"🔸 **{name} ({username})** | Role: `{role}` | DO Code: `{do_code}`")
         with col2:
             if st.button("✅ Approve", key=f"approve_{rowid}"):
                 start_date = datetime.today().strftime("%Y-%m-%d")
 
                 try:
                     st.info(f"✅ Adding user {username} to users table...")
-                    add_user(username, password, role, start_date, None, db_name, do_code)
+                    add_user(username, password, role, start_date, None, db_name, do_code, agency_code, name)
                     st.success("✅ Added to users table.")
                 except Exception as e:
                     st.error(f"❌ Failed to add user: {e}")
@@ -104,5 +116,3 @@ def superadmin_dashboard():
     show_pending_approvals()
     st.markdown("---")
     show_user_management()
-
-

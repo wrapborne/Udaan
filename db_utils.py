@@ -16,12 +16,11 @@ def get_db_connection():
         st.error("No database selected. Please log in again.")
         st.stop()
 
-    return mysql.connector.connect(
-        host=HOST,
-        user=USER,
-        password=PASSWORD,
-        database=st.session_state["db_name"]
-    )
+    db_config = DB_CONFIG.copy()
+    db_config["database"] = st.session_state["db_name"]
+    return mysql.connector.connect(**db_config)
+
+
 
 # === Initialization ===
 def init_db():
@@ -52,7 +51,8 @@ def init_db():
                 db_name VARCHAR(200),
                 do_code VARCHAR(100),
                 agency_code VARCHAR(100),
-                name VARCHAR()
+                name VARCHAR(),
+                approved BOOLEAN DEFAULT 0
             )
         """)
 
@@ -65,14 +65,10 @@ def init_db():
         conn.commit()
 
 def check_credentials(username, password):
-    import mysql.connector
+    db_config = DB_CONFIG.copy()
+    db_config["database"] = "lic-db"  # Central DB where all user credentials are stored
 
-    conn = mysql.connector.connect(
-        host=HOST,
-        user=USER,
-        password=PASSWORD,
-        database="lic-db"  # Central DB where all user credentials are stored
-    )
+    conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute(
@@ -83,14 +79,15 @@ def check_credentials(username, password):
     conn.close()
 
     if user:
-        do_code = user['do_code']  # Ensure this column exists in your users table
+        do_code = user['do_code']
         st.session_state['username'] = user['username']
         st.session_state['role'] = user['role']
         st.session_state['agency_code'] = user['agency_code']
-        st.session_state['current_db'] = f"lic_{do_code}"  # 👈 Main point: route to DO’s DB
-        return True
+        st.session_state['current_db'] = f"lic_{do_code}"  # 👈 DO’s DB
+        return user  # ✅ return user dict
     else:
-        return False
+        return None
+
 
 def user_exists(username):
     with get_mysql_connection() as conn:
@@ -112,14 +109,61 @@ def get_user(username):
         cursor.execute("SELECT * FROM users WHERE username = %s", (username.upper(),))
         return cursor.fetchone()
 
-def add_user(username, password, role, start_date=None, admin_username=None, db_name=None, do_code=None, agency_code = None, name = None):
-    with get_mysql_connection() as conn:
+def ensure_user_columns_exist(cursor):
+    cursor.execute("SHOW COLUMNS FROM users")
+    columns = [col[0] for col in cursor.fetchall()]
+    alterations = []
+
+    if 'do_code' not in columns:
+        alterations.append("ADD COLUMN do_code VARCHAR(50)")
+    if 'agency_code' not in columns:
+        alterations.append("ADD COLUMN agency_code VARCHAR(50)")
+    if 'name' not in columns:
+        alterations.append("ADD COLUMN name VARCHAR(100)")
+
+    if alterations:
+        alter_sql = f"ALTER TABLE users {', '.join(alterations)}"
+        cursor.execute(alter_sql)
+
+
+def add_user(username, password, role, start_date=None, admin_username=None, db_name=None, do_code=None, agency_code=None, name=None):
+    from mysql.connector import ProgrammingError
+
+    # 1️⃣ Add to lic-db (master)
+    with get_mysql_connection("lic-db") as conn:
         cursor = conn.cursor()
+        ensure_user_columns_exist(cursor)
         cursor.execute("""
             INSERT INTO users (username, password, role, start_date, admin_username, db_name, do_code, agency_code, name)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (username.upper(), password, role, start_date, admin_username, db_name, do_code, agency_code, name))
         conn.commit()
+
+    # 2️⃣ Add to admin's own DB
+    if db_name:
+        with get_mysql_connection(db_name) as admin_conn:
+            admin_cursor = admin_conn.cursor()
+
+            # ✅ Ensure the extra columns exist here as well
+            ensure_user_columns_exist(admin_cursor)
+
+            admin_cursor.execute("""
+                INSERT INTO users (username, password, role, start_date, admin_username, db_name, do_code, agency_code, name)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (username.upper(), password, role, start_date, admin_username, db_name, do_code, agency_code, name))
+            admin_conn.commit()
+
+
+
+def add_user_to_db(username, password, role, admin_username, db_name, do_code, agency_code, name):
+    with get_mysql_connection("lic-db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO users (username, password, role, admin_username, db_name, do_code, agency_code, name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (username.upper(), password, role, admin_username, db_name, do_code, agency_code, name))
+        conn.commit()
+        
 
 def delete_user(username):
     with get_mysql_connection() as conn:
@@ -127,8 +171,42 @@ def delete_user(username):
         cursor.execute("DELETE FROM users WHERE username = %s", (username.upper(),))
         conn.commit()
 
+
+#from .db_connection import get_mysql_connection  # Adjust path as needed
+
+def get_all_users(admin_filter=None):
+    conn = get_mysql_connection()
+    cursor = conn.cursor()
+
+    if admin_filter:
+        query = """
+            SELECT username, role, start_date, do_code, name, agency_code, admin_username
+            FROM users
+            WHERE admin_username = %s AND role = 'agent'
+        """
+        cursor.execute(query, (admin_filter,))
+    else:
+        query = """
+            SELECT username, role, start_date, do_code, name, agency_code, admin_username
+            FROM users
+        """
+        cursor.execute(query)
+
+    results = cursor.fetchall()
+    conn.close()
+    return results
+
+
+
+  
+
 # === Pending Registration ===
-def add_pending_user(username, password, role, admin_username, db_name, do_code = None, agency_code = None, name):
+def add_pending_user(username, password, role, admin_username, db_name, do_code = None, agency_code = None, name = None):
+    # Step 1: Auto-create DO DB if role is admin and do_code is given
+    if role == "admin" and do_code:
+        create_do_database(do_code)  # ✅ ensures lic_<do_code> is created before anything else
+    
+    # Step 2: Add to pending_users table (in lic-db)
     with get_mysql_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -141,9 +219,8 @@ def get_pending_users():
     with get_mysql_connection("lic-db") as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, username, password, role, admin_username, db_name, do_code, agency_code, name 
+            SELECT id, username, password, role, admin_username, db_name, do_code, agency_code, name, approved
             FROM pending_users
-            WHERE approved = 0
         """)
         return cursor.fetchall()
 
@@ -175,10 +252,27 @@ def load_users():
     with get_mysql_connection() as conn:
         return pd.read_sql("SELECT * FROM users", conn)
 
-def get_all_users():
-    with get_mysql_connection() as conn:
-        df = pd.read_sql("SELECT username, role, start_date, do_code, namen agency_code FROM users", conn)
-        return df.values.tolist()
+def get_all_users(admin_filter=None):
+    conn = get_mysql_connection()
+    cursor = conn.cursor()
+
+    if admin_filter:
+        query = """
+            SELECT username, role, start_date, do_code, name, agency_code, admin_username
+            FROM users
+            WHERE admin_username = %s
+        """
+        cursor.execute(query, (admin_filter,))
+    else:
+        query = """
+            SELECT username, role, start_date, do_code, name, agency_code, admin_username
+            FROM users
+        """
+        cursor.execute(query)
+
+    results = cursor.fetchall()
+    conn.close()
+    return results
 
 def update_user_role_and_start(username, new_role, new_start_date):
     with get_mysql_connection() as conn:

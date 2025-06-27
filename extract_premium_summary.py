@@ -2,9 +2,9 @@ import re
 import pandas as pd
 import streamlit as st
 
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Please log in to continue.")
-    st.stop()
+#if "logged_in" not in st.session_state or not st.session_state.logged_in:
+#    st.warning("⚠️ Please log in to continue.")
+#   st.stop()
 
 
 # --- For TXT files ---
