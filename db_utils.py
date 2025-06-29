@@ -230,6 +230,38 @@ def delete_pending_user(rowid):
         cursor.execute("DELETE FROM pending_users WHERE id = %s", (rowid,))
         conn.commit()
 
+def save_password_reset_request(username, role, new_password):
+    with get_mysql_connection("lic-db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO password_reset_requests (username, role, new_password)
+            VALUES (%s, %s, %s)
+        """, (username.upper(), role, new_password))
+        conn.commit()
+
+def approve_password_reset(req_id, username, role, new_password):
+    with get_mysql_connection("lic-db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users SET password = %s WHERE username = %s AND role = %s
+        """, (new_password, username, role))
+
+        cursor.execute("UPDATE password_reset_requests SET approved = 1 WHERE id = %s", (req_id,))
+        conn.commit()
+
+    if role == "agent":
+        cursor.execute("SELECT db_name FROM users WHERE username = %s AND role = 'agent'", (username,))
+        result = cursor.fetchone()
+        if result:
+            agent_db = result[0]
+            with get_mysql_connection(agent_db) as agent_conn:
+                agent_cursor = agent_conn.cursor()
+                agent_cursor.execute("""
+                    UPDATE users SET password = %s WHERE username = %s
+                """, (new_password, username))
+                agent_conn.commit()
+
+
 # === Login Tracking ===
 def log_failed_attempt(username):
     with get_mysql_connection() as conn:

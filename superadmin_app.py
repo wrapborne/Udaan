@@ -3,6 +3,8 @@ import streamlit as st
 from db_utils import get_all_users, update_user_role_and_start, delete_user, get_pending_users, add_user, delete_pending_user
 from datetime import datetime
 from admin_utils import create_new_admin
+from db_utils import approve_password_reset
+from forgot_password_approval_ui import show_forgot_password_approval_ui
 
 def show_user_management():
     st.subheader("👥 Manage Registered Users")
@@ -12,19 +14,16 @@ def show_user_management():
         return
 
     for user in users:
-        print("DEBUG USER ROW:", user)  # 👈 INSERT THIS LINE
+        print("DEBUG USER ROW:", user)
         username, role, start_date, do_code, name, agency_code = user[:6]
 
-        # ❌ Skip agents – only show admins
         if role != "admin":
             continue
 
-        # 🔒 Skip superadmin
         if role == "superadmin":
             st.markdown("✅ Superadmin (cannot modify)")
             continue
 
-        # 👤 Show full name (code)
         display_name = f"{name} ({username})" if name else username
 
         with st.expander(f"🔸 {display_name}"):
@@ -43,7 +42,7 @@ def show_user_management():
 
             cols = st.columns(2)
             with cols[0]:
-                if st.button("💾 Save Changes", key=f"save_{username}"):
+                if st.button("📏 Save Changes", key=f"save_{username}"):
                     update_user_role_and_start(username, role, new_start_date.strftime("%Y-%m-%d"))
                     st.success("✅ Start date updated.")
                     st.rerun()
@@ -55,7 +54,7 @@ def show_user_management():
                     st.rerun()
 
 def show_pending_approvals():
-    st.subheader("📝 Pending Admin Registrations")
+    st.subheader("📜 Pending Admin Registrations")
 
     try:
         pending = get_pending_users()
@@ -116,3 +115,6 @@ def superadmin_dashboard():
     show_pending_approvals()
     st.markdown("---")
     show_user_management()
+    st.markdown("---")
+    show_forgot_password_approval_ui(current_user=st.session_state["username"])
+

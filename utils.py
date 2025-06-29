@@ -5,14 +5,40 @@ from sqlalchemy import text
 from sqlalchemy import create_engine
 from db_config import DB_CONFIG
 from db_utils import get_mysql_connection
-
 # utils.py or logging_utils.py
 from datetime import datetime
-
 from db_utils import get_mysql_connection
 import pandas as pd
-
 from db_utils import get_admin_by_do_code, user_exists, add_pending_user
+import mysql.connector
+from db_config import DB_CONFIG
+
+def database_exists(db_name):
+    try:
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD
+        )
+        cursor = connection.cursor()
+        cursor.execute("SHOW DATABASES LIKE %s", (db_name,))
+        exists = cursor.fetchone() is not None
+        cursor.close()
+        connection.close()
+        return exists
+    except Exception as e:
+        print("DB check failed:", e)
+        return False
+
+       
+def database_exists(db_name):
+    try:
+        engine = create_engine(f"mysql+mysqlconnector://<user>:<pass>@<host>/{db_name}")
+        with engine.connect():
+            return True
+    except Exception as e:
+        return False
+
 
 def get_financial_year_options(start_year=1956):
     today = datetime.today()
@@ -128,13 +154,20 @@ def log_login(username):
 
 
 def get_mysql_connection(db_name=None):
-    """Returns a SQLAlchemy engine for the given database."""
+    print("🚨 DB_CONFIG:", DB_CONFIG)
     if db_name is None:
         db_name = DB_CONFIG["database"]
 
-    return create_engine(
-        f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{db_name}"
-    )
+    try:
+        engine = create_engine(
+            f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{db_name}"
+        )
+        print("✅ Engine created successfully")
+        return engine
+    except Exception as e:
+        print("❌ Error creating engine:", e)
+        return None
+
 
 def load_lic_data_from_db():
     engine = get_mysql_connection(st.session_state["db_name"])

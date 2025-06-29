@@ -11,6 +11,7 @@ from db_utils import get_pending_users, add_user, delete_pending_user, get_all_u
 from openpyxl import load_workbook
 from openpyxl.styles import numbers
 from data_display_column import ADMIN_DISPLAY_COLUMNS as DISPLAY_COLUMNS
+from forgot_password_approval_ui import show_forgot_password_approval_ui
 
 
 # --- File Upload Handlers ---
@@ -351,3 +352,8 @@ def admin_dashboard():
         if st.session_state.get("premium_uploaded", False):
             st.success("✅ Premium summary uploaded and saved.")
             st.session_state["premium_uploaded"] = False
+
+    st.markdown("---")
+    #st.subheader("🔐 Approve Password Reset Requests (Agents Only)")
+    show_forgot_password_approval_ui(current_user=st.session_state["username"])
+  
