@@ -18,6 +18,7 @@ def show_eligibility_form(current_user=None):
     grp_2_plans = chart.get("grp_2_plans", [])
     all_plans = sorted(set(grp_1_plans + grp_2_plans))
 
+
     with st.form("eligibility_form"):
         st.subheader("Step 1: Personal & Income Details")
         name = st.text_input("Full Name")
