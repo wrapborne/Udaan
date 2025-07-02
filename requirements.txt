@@ -9,3 +9,5 @@ pdfplumber
 dateparser
 python-dotenv
 bcrypt
+inflect
+

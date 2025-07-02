@@ -6,6 +6,7 @@ from admin_utils import create_new_admin
 from db_utils import approve_password_reset
 from forgot_password_approval_ui import show_forgot_password_approval_ui
 
+
 def show_user_management():
     st.subheader("👥 Manage Registered Users")
     users = get_all_users()

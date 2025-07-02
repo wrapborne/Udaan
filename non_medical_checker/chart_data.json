@@ -1,0 +1,52 @@
+{
+  "grp_1_plans": ["717", "732", "736", "734", "745", "748", "760", "761", "768", "771", "873"],
+  "grp_2_plans": ["714", "715", "720", "721", "733"],
+  "limits": {
+    "PNM": {
+      "Grp I": [
+        { "age_range": [18, 35], "max_suc": 50 },
+        { "age_range": [36, 45], "max_suc": 25 },
+        { "age_range": [46, 50], "max_suc": 13 },
+        { "age_range": [51, 55], "max_suc": 13 },
+        { "age_range": [56, 60], "max_suc": 3 }
+      ],
+      "Grp II": [
+        { "age_range": [18, 35], "max_suc": 30 },
+        { "age_range": [36, 45], "max_suc": 20 },
+        { "age_range": [46, 50], "max_suc": 10 },
+        { "age_range": [51, 55], "max_suc": 13 },
+        { "age_range": [56, 60], "max_suc": 3 }
+      ]
+    },
+    "SNM": {
+      "Grp I": [
+        { "age_range": [18, 35], "max_suc": 30 },
+        { "age_range": [36, 45], "max_suc": 20 },
+        { "age_range": [46, 50], "max_suc": 10 },
+        { "age_range": [51, 55], "max_suc": 13 },
+        { "age_range": [56, 60], "max_suc": 3 }
+      ],
+      "Grp II": [
+        { "age_range": [18, 35], "max_suc": 25 },
+        { "age_range": [36, 45], "max_suc": 15 },
+        { "age_range": [46, 50], "max_suc": 8 },
+        { "age_range": [51, 55], "max_suc": 13 },
+        { "age_range": [56, 60], "max_suc": 3 }
+      ]
+    },
+    "NMG": {
+      "Grp I": [
+        { "age_range": [18, 35], "max_suc": 12 },
+        { "age_range": [36, 45], "max_suc": 8 },
+        { "age_range": [46, 50], "max_suc": 5 },
+        { "age_range": [51, 55], "max_suc": 3 }
+      ],
+      "Grp II": [
+        { "age_range": [18, 35], "max_suc": 8 },
+        { "age_range": [36, 45], "max_suc": 5 },
+        { "age_range": [46, 50], "max_suc": 3 },
+        { "age_range": [51, 55], "max_suc": 3 }
+      ]
+    }
+  }
+}

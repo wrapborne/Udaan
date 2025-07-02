@@ -12,6 +12,8 @@ from openpyxl import load_workbook
 from openpyxl.styles import numbers
 from data_display_column import ADMIN_DISPLAY_COLUMNS as DISPLAY_COLUMNS
 from forgot_password_approval_ui import show_forgot_password_approval_ui
+from non_medical_checker.app_ui import show_eligibility_form
+
 
 
 # --- File Upload Handlers ---
