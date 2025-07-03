@@ -312,6 +312,7 @@ def show_agent_data(df):
 
     show_pending_approvals()
     show_user_management()
+    return df
 
 
 # --- Main Dashboard ---
