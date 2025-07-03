@@ -323,7 +323,9 @@ def admin_dashboard():
     df = load_lic_data_from_db()
     df = filter_df_by_selected_year(df, st.session_state.get("selected_year", "All Years"))
     df = filter_df_by_financial_year(df, st.session_state.get("fin_year", "All Financial Years"))
-    show_agent_data(df)
+   # show_agent_data(df)
+
+    filtered_df = show_agent_data(df)  # ✅ Capture the final filtered df
 
     st.markdown("### 👥 Policy Count by Agent")
     agent_count_df = get_policy_count_by_agent(df)
