@@ -329,7 +329,6 @@ def admin_dashboard():
     if not agent_count_df.empty:
         st.dataframe(agent_count_df.style.highlight_max(axis=1), use_container_width=True)
 
-
     st.markdown("---")
     st.markdown("### 📤 Upload Files")
     col1, col2 = st.columns(2)
@@ -341,24 +340,17 @@ def admin_dashboard():
             st.rerun()
         if st.session_state.get("data_uploaded", False):
             st.success("✅ Data uploaded and updated.")
-            st.session_state["data_uploaded"] = False  # Reset the flag
-    
-
+            st.session_state["data_uploaded"] = False
 
     with col2:
         premium_file = st.file_uploader("💰 Upload Premium Summary (PDF or TXT)", type=["pdf", "txt"], key="premium_uploader")
-
         if premium_file and not st.session_state.get("premium_uploaded", False):
             upload_premium_summary(premium_file)
             st.session_state["premium_uploaded"] = True
             st.rerun()
-
-        # ✅ Show success message once after rerun
         if st.session_state.get("premium_uploaded", False):
             st.success("✅ Premium summary uploaded and saved.")
             st.session_state["premium_uploaded"] = False
 
     st.markdown("---")
-    #st.subheader("🔐 Approve Password Reset Requests (Agents Only)")
     show_forgot_password_approval_ui(current_user=st.session_state["username"])
-  
