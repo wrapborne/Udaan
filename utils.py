@@ -4,7 +4,7 @@ import streamlit as st
 from sqlalchemy import create_engine, text
 from db_config import DB_CONFIG
 from datetime import datetime
-from db_utils import get_admin_by_do_code, user_exists, add_pending_user
+#from db_utils import get_admin_by_do_code, user_exists, add_pending_user
 import mysql.connector
 
 def get_mysql_connection(db_name=None):
