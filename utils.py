@@ -1,27 +1,73 @@
 # utils.py
 import pandas as pd
 import streamlit as st
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+from sqlalchemy import create_engine
 from db_config import DB_CONFIG
+from db_utils import get_mysql_connection
+# utils.py or logging_utils.py
 from datetime import datetime
+from db_utils import get_mysql_connection
+import pandas as pd
+from db_utils import get_admin_by_do_code, user_exists, add_pending_user
 import mysql.connector
+from db_config import DB_CONFIG
 
-def get_mysql_connection(db_name=None):
-    """Returns a SQLAlchemy engine for the given database."""
-    if db_name is None:
-        db_name = DB_CONFIG["database"]
-
+def database_exists(db_name):
     try:
-        engine = create_engine(
-            f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{db_name}"
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD
         )
-        return engine
+        cursor = connection.cursor()
+        cursor.execute("SHOW DATABASES LIKE %s", (db_name,))
+        exists = cursor.fetchone() is not None
+        cursor.close()
+        connection.close()
+        return exists
     except Exception as e:
-        print("❌ Error creating engine:", e)
-        return None
+        print("DB check failed:", e)
+        return False
+
+       
+def database_exists(db_name):
+    try:
+        engine = create_engine(f"mysql+mysqlconnector://<user>:<pass>@<host>/{db_name}")
+        with engine.connect():
+            return True
+    except Exception as e:
+        return False
+
+
+def get_financial_year_options(start_year=1956):
+    today = datetime.today()
+    current_year = today.year + (1 if today.month >= 4 else 0)
+    options = ["All Financial Years"]
+
+    for year in range(start_year, current_year + 1):
+        options.append(f"{year-1}-{year}")
+
+    return options
+
+def get_agency_year_ranges(start_date_str):
+    """Returns agency year ranges from start_date to current date."""
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+    except Exception as e:
+        return ["All Years"]
+
+    today = datetime.today()
+    options = ["All Years"]
+
+    while start_date < today:
+        end_date = start_date.replace(year=start_date.year + 1) - pd.Timedelta(days=1)
+        options.append(f"{start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
+        start_date = end_date + pd.Timedelta(days=1)
+
+    return options
 
 def handle_registration(username, password, do_code, role, name, agency_code=None):
-    from db_utils import get_admin_by_do_code, user_exists, add_pending_user
     # 🚫 Validate required fields
     if username is None or not str(username).strip():
         st.error("❌ Username is required.")
@@ -68,6 +114,8 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT DISTINCT `Agency Code` FROM lic_data"))
                 agency_codes = [row[0].strip().upper() for row in result.fetchall()]
+
+
             if agency_code.strip().upper() not in agency_codes:
                 st.error("❌ Invalid Agency Code. Contact your admin.")
                 return
@@ -88,6 +136,7 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
         username=username_clean,
         password=password,
         role=role,
+    #    start_date=datetime.today().strftime("%Y-%m-%d"),
         admin_username=admin_username,
         db_name=db_name,
         do_code=do_code,
@@ -96,54 +145,49 @@ def handle_registration(username, password, do_code, role, name, agency_code=Non
 
     st.success("✅ Registration submitted. Admin will approve your account.")
 
-@st.cache_data(ttl=300, show_spinner="🔄 Loading LIC data...")
-def load_filtered_lic_data(agency_code, search=""):
-    """Loads LIC data filtered by agency_code and optional search query directly from MySQL."""
-    engine = get_mysql_connection(st.session_state.db_name)
 
-    query = """
-        SELECT * FROM lic_data
-        WHERE `Agency Code` = %s
-    """
-    params = [agency_code]
 
-    if search:
-        query += """
-            AND CONCAT_WS(' ', `Policy No`, `Plan`, `Mode`, `Remarks`, `Short Name`) LIKE %s
-        """
-        params.append(f"%{search}%")
-
-    df = pd.read_sql(query, con=engine, params=params)
-    return df
 
 def log_login(username):
     with open("login_log.txt", "a") as f:
         f.write(f"{username} logged in at {datetime.now():%Y-%m-%d %H:%M:%S}\n")
 
-def get_financial_year_options(start_year=1956):
-    today = datetime.today()
-    current_year = today.year + (1 if today.month >= 4 else 0)
-    options = ["All Financial Years"]
-    for year in range(start_year, current_year + 1):
-        options.append(f"{year-1}-{year}")
-    return options
 
-def get_agency_year_ranges(start_date_str):
-    """Returns agency year ranges from start_date to current date."""
+def get_mysql_connection(db_name=None):
+    print("🚨 DB_CONFIG:", DB_CONFIG)
+    if db_name is None:
+        db_name = DB_CONFIG["database"]
+
     try:
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        engine = create_engine(
+            f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{db_name}"
+        )
+        print("✅ Engine created successfully")
+        return engine
     except Exception as e:
-        return ["All Years"]
+        print("❌ Error creating engine:", e)
+        return None
 
-    today = datetime.today()
-    options = ["All Years"]
 
-    while start_date < today:
-        end_date = start_date.replace(year=start_date.year + 1) - pd.Timedelta(days=1)
-        options.append(f"{start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
-        start_date = end_date + pd.Timedelta(days=1)
+def load_lic_data_from_db():
+    engine = get_mysql_connection(st.session_state["db_name"])
+    try:
+        df = pd.read_sql("SELECT * FROM lic_data", con=engine)
+    except Exception as e:
+        st.error(f"Failed to load data: {e}")
+        df = pd.DataFrame()
+    return df
 
-    return options
+def get_policy_count_by_plan(df):
+    if "Plan" not in df.columns or df["Plan"].dropna().empty:
+        return pd.DataFrame()
+    plan_counts = df["Plan"].value_counts(dropna=True)
+    if plan_counts.empty:
+        return pd.DataFrame()
+    plan_counts_df = pd.DataFrame(plan_counts).T
+    plan_counts_df.index = ["Policy Count"]
+    plan_counts_df.columns = plan_counts_df.columns.astype(str)
+    return plan_counts_df
 
 def filter_df_by_selected_year(df, selected_year):
     if selected_year == "All Years":
@@ -168,14 +212,3 @@ def filter_df_by_financial_year(df, selected_fin_year):
         return df[(df["DOC"] >= start_date) & (df["DOC"] <= end_date)]
     except:
         return df
-
-def get_policy_count_by_plan(df):
-    if "Plan" not in df.columns or df["Plan"].dropna().empty:
-        return pd.DataFrame()
-    plan_counts = df["Plan"].value_counts(dropna=True)
-    if plan_counts.empty:
-        return pd.DataFrame()
-    plan_counts_df = pd.DataFrame(plan_counts).T
-    plan_counts_df.index = ["Policy Count"]
-    plan_counts_df.columns = plan_counts_df.columns.astype(str)
-    return plan_counts_df
