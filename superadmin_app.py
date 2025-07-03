@@ -117,3 +117,4 @@ def superadmin_dashboard():
     show_user_management()
     st.markdown("---")
     show_forgot_password_approval_ui(current_user=st.session_state["username"])
+
