@@ -312,7 +312,7 @@ def show_agent_data(df):
 
     show_pending_approvals()
     show_user_management()
-    return df
+    st.session_state["filtered_df"] = df  # ✅ store in session state
 
 
 # --- Main Dashboard ---
@@ -325,7 +325,9 @@ def admin_dashboard():
     df = filter_df_by_financial_year(df, st.session_state.get("fin_year", "All Financial Years"))
    # show_agent_data(df)
 
-    filtered_df = show_agent_data(df)  # ✅ Capture the final filtered df
+    show_agent_data(df)  # don’t capture returned df anymore
+    filtered_df = st.session_state.get("filtered_df", df)  # ✅ fallback if none yet
+
 
     st.markdown("### 👥 Policy Count by Agent")
     agent_count_df = get_policy_count_by_agent(df)
