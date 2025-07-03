@@ -39,6 +39,18 @@ def database_exists(db_name):
     except Exception as e:
         return False
 
+def get_policy_count_by_agent(df):
+    if "Agency Code" not in df.columns or df["Agency Code"].dropna().empty:
+        return pd.DataFrame()
+    agent_counts = df["Agency Code"].value_counts(dropna=True)
+    if agent_counts.empty:
+        return pd.DataFrame()
+    agent_counts_df = pd.DataFrame(agent_counts).T
+    agent_counts_df.index = ["Policy Count"]
+    agent_counts_df.columns = agent_counts_df.columns.astype(str)
+    return agent_counts_df
+
+
 
 def get_financial_year_options(start_year=1956):
     today = datetime.today()
