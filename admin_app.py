@@ -317,37 +317,19 @@ def show_agent_data(df):
 # --- Main Dashboard ---
 def admin_dashboard():
     st.title("🧑‍💼 Admin Panel")
-
-    # --- Premium Summary Dropdown ---
     show_premium_summary_dropdown()
 
-    # --- Load & Filter Data ---
     df = load_lic_data_from_db()
     df = filter_df_by_selected_year(df, st.session_state.get("selected_year", "All Years"))
     df = filter_df_by_financial_year(df, st.session_state.get("fin_year", "All Financial Years"))
-    
-    # --- Display LIC Data ---
     show_agent_data(df)
 
-            # --- Policy Count by Agent ---
     st.markdown("### 👥 Policy Count by Agent")
     agent_count_df = get_policy_count_by_agent(df)
     if not agent_count_df.empty:
         st.dataframe(agent_count_df.style.highlight_max(axis=1), use_container_width=True)
 
-
-    # --- Pending User Approvals ---
-    show_pending_approvals()
-
-    # --- Manage Registered Users ---
-    show_user_management()
-
-    # --- Approve Password Reset Requests ---
-    show_forgot_password_approval_ui(current_user=st.session_state["username"])
-
     st.markdown("---")
-
-    # --- Upload Files Section ---
     st.markdown("### 📤 Upload Files")
     col1, col2 = st.columns(2)
     with col1:
@@ -358,7 +340,7 @@ def admin_dashboard():
             st.rerun()
         if st.session_state.get("data_uploaded", False):
             st.success("✅ Data uploaded and updated.")
-            st.session_state["data_uploaded"] = False  # Reset the flag
+            st.session_state["data_uploaded"] = False
 
     with col2:
         premium_file = st.file_uploader("💰 Upload Premium Summary (PDF or TXT)", type=["pdf", "txt"], key="premium_uploader")
@@ -369,3 +351,6 @@ def admin_dashboard():
         if st.session_state.get("premium_uploaded", False):
             st.success("✅ Premium summary uploaded and saved.")
             st.session_state["premium_uploaded"] = False
+
+    st.markdown("---")
+    show_forgot_password_approval_ui(current_user=st.session_state["username"])
