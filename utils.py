@@ -4,7 +4,6 @@ import streamlit as st
 from sqlalchemy import create_engine, text
 from db_config import DB_CONFIG
 from datetime import datetime
-#from db_utils import get_admin_by_do_code, user_exists, add_pending_user
 import mysql.connector
 
 def get_mysql_connection(db_name=None):
@@ -22,6 +21,7 @@ def get_mysql_connection(db_name=None):
         return None
 
 def handle_registration(username, password, do_code, role, name, agency_code=None):
+    from db_utils import get_admin_by_do_code, user_exists, add_pending_user
     # 🚫 Validate required fields
     if username is None or not str(username).strip():
         st.error("❌ Username is required.")
