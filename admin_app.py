@@ -325,6 +325,12 @@ def admin_dashboard():
     df = filter_df_by_financial_year(df, st.session_state.get("fin_year", "All Financial Years"))
     show_agent_data(df)
 
+    st.markdown("### 👥 Policy Count by Agent")
+    agent_count_df = get_policy_count_by_agent(df)
+    if not agent_count_df.empty:
+        st.dataframe(agent_count_df.style.highlight_max(axis=1), use_container_width=True)
+
+
     st.markdown("---")
     st.markdown("### 📤 Upload Files")
     col1, col2 = st.columns(2)
