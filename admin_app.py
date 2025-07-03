@@ -310,6 +310,12 @@ def show_agent_data(df):
     if not plan_count_df.empty:
         st.dataframe(plan_count_df.style.highlight_max(axis=1), use_container_width=True)
 
+        # --- Policy Count by Agent ---
+    st.markdown("### 👥 Policy Count by Agent")
+    agent_count_df = get_policy_count_by_agent(df)
+    if not agent_count_df.empty:
+        st.dataframe(agent_count_df.style.highlight_max(axis=1), use_container_width=True)
+
     show_pending_approvals()
     show_user_management()
 
@@ -328,12 +334,6 @@ def admin_dashboard():
     
     # --- Display LIC Data ---
     show_agent_data(df)
-
-    # --- Policy Count by Agent ---
-    st.markdown("### 👥 Policy Count by Agent")
-    agent_count_df = get_policy_count_by_agent(df)
-    if not agent_count_df.empty:
-        st.dataframe(agent_count_df.style.highlight_max(axis=1), use_container_width=True)
 
     # --- Pending User Approvals ---
     show_pending_approvals()
