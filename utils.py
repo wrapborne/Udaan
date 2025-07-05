@@ -180,14 +180,22 @@ def get_mysql_connection(db_name=None):
         print("❌ Error creating engine:", e)
         return None
 
-
+@st.cache_data(show_spinner="🔄 Loading LIC data...")
 def load_lic_data_from_db():
-    engine = get_mysql_connection(st.session_state["db_name"])
     try:
+        engine = get_mysql_connection(st.session_state["db_name"])
         df = pd.read_sql("SELECT * FROM lic_data", con=engine)
+
+        # ✅ Consolidate expensive processing here — do it once
+        if not df.empty:
+            if "DOC" in df.columns:
+                df["DOC"] = pd.to_datetime(df["DOC"], errors="coerce")
+            df.insert(0, "S.No.", range(1, len(df) + 1))
+
     except Exception as e:
-        st.error(f"Failed to load data: {e}")
+        st.error(f"❌ Failed to load data: {e}")
         df = pd.DataFrame()
+
     return df
 
 def get_policy_count_by_plan(df):

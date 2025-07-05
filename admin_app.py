@@ -51,6 +51,9 @@ def upload_lic_data(uploaded_file):
 
         st.success(f"✅ {len(combined)} proposals saved successfully.")
 
+        # ✅ Clear cache so updated data loads next time
+        st.cache_data.clear()
+
     except Exception as e:
         st.error(f"❌ Failed to save data: {e}")
 
@@ -123,7 +126,10 @@ def upload_premium_summary(premium_file):
             # New data — insert directly
             premium_df[check_cols].to_sql("premium_summary", con=engine, if_exists="append", index=False)
             st.success("✅ Premium summary uploaded and saved.")
-            
+
+        # ✅ Clear cache so updated data loads next time
+        st.cache_data.clear()
+
     except Exception as e:
         st.error(f"❌ Failed to process premium file: {e}")
 
@@ -254,7 +260,7 @@ def show_agent_data(df):
         return
 
     df = df.copy().reset_index(drop=True)
-    df.insert(0, "S.No.", range(1, len(df) + 1))
+    #df.insert(0, "S.No.", range(1, len(df) + 1))
     df["DOC"] = pd.to_datetime(df["DOC"], errors="coerce")
 
     # Ensure DOC is parsed safely
@@ -313,7 +319,7 @@ def show_agent_data(df):
     show_pending_approvals()
     show_user_management()
     st.session_state["filtered_df"] = df  # ✅ store in session state
-
+    return df
 
 # --- Main Dashboard ---
 def admin_dashboard():
@@ -325,12 +331,10 @@ def admin_dashboard():
     df = filter_df_by_financial_year(df, st.session_state.get("fin_year", "All Financial Years"))
    # show_agent_data(df)
 
-    show_agent_data(df)  # don’t capture returned df anymore
-    filtered_df = st.session_state.get("filtered_df", df)  # ✅ fallback if none yet
-
+    filtered_df = show_agent_data(df)  # ✅ capture the filtered DataFrame directly
 
     st.markdown("### 👥 Policy Count by Agent")
-    agent_count_df = get_policy_count_by_agent(df)
+    agent_count_df = get_policy_count_by_agent(filtered_df)  # ✅ use filtered_df here
     if not agent_count_df.empty:
         st.dataframe(agent_count_df.style.highlight_max(axis=1), use_container_width=True)
 
