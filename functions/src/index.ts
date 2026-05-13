@@ -1,11 +1,40 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
-// Initialize the Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
 
-// This is an HTTPS Callable Function
+async function requireCallerRole(
+  request: functions.https.CallableRequest,
+  allowedRoles: string[]
+): Promise<admin.firestore.DocumentSnapshot> {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "You must be signed in to perform this action."
+    );
+  }
+
+  const callerDoc = await db.collection("users").doc(callerUid).get();
+  if (!callerDoc.exists) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Caller profile was not found."
+    );
+  }
+
+  const role = callerDoc.get("role");
+  if (!allowedRoles.includes(role)) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "You are not allowed to perform this action."
+    );
+  }
+
+  return callerDoc;
+}
+
 export const registerNewUser = functions.https.onCall(async (request) => {
   const {
     name,
@@ -17,8 +46,6 @@ export const registerNewUser = functions.https.onCall(async (request) => {
     role,
   } = request.data;
 
-  // --- NEW VALIDATION ---
-  // 1. Basic empty field check
   if (!email || !password || !name || !userCode || !phone) {
     throw new functions.https.HttpsError(
       "invalid-argument",
@@ -26,7 +53,6 @@ export const registerNewUser = functions.https.onCall(async (request) => {
     );
   }
 
-  // 2. Phone number format validation (must be 10 digits)
   const phoneRegex = /^\d{10}$/;
   if (!phoneRegex.test(phone)) {
     throw new functions.https.HttpsError(
@@ -35,7 +61,6 @@ export const registerNewUser = functions.https.onCall(async (request) => {
     );
   }
 
-  // 3. Email format validation (simple regex)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     throw new functions.https.HttpsError(
@@ -43,11 +68,8 @@ export const registerNewUser = functions.https.onCall(async (request) => {
       "Invalid email address format."
     );
   }
-  // --- END NEW VALIDATION ---
 
   try {
-    // --- NEW DUPLICATE CHECKS ---
-    // Check for duplicate email in Firestore
     const emailQuery = await db.collection("users").where("email", "==", email).get();
     if (!emailQuery.empty) {
       throw new functions.https.HttpsError(
@@ -56,7 +78,6 @@ export const registerNewUser = functions.https.onCall(async (request) => {
       );
     }
 
-    // Check for duplicate phone number in Firestore
     const phoneQuery = await db.collection("users").where("phone", "==", phone).get();
     if (!phoneQuery.empty) {
       throw new functions.https.HttpsError(
@@ -64,9 +85,7 @@ export const registerNewUser = functions.https.onCall(async (request) => {
         "This phone number is already registered."
       );
     }
-    // --- END NEW DUPLICATE CHECKS ---
 
-    // Check if the advisor/DO code is already in use
     const codeField = role === "advisor" ? "agencyCode" : "doCode";
     const existingUserByCode = await db
       .collection("users")
@@ -76,7 +95,7 @@ export const registerNewUser = functions.https.onCall(async (request) => {
     if (!existingUserByCode.empty) {
       throw new functions.https.HttpsError(
         "already-exists",
-        "This code is already registered."
+        role === "advisor" ? "agency_code already exists." : "do_code already exists."
       );
     }
 
@@ -104,10 +123,7 @@ export const registerNewUser = functions.https.onCall(async (request) => {
       adminId = adminQuery.docs[0].id;
     }
 
-    // Format the phone number to E.164 for Firebase Auth
     const formattedPhoneNumber = `+91${phone}`;
-
-    // Create the user in Firebase Authentication
     const userRecord = await admin.auth().createUser({
       email: email,
       password: password,
@@ -115,11 +131,10 @@ export const registerNewUser = functions.https.onCall(async (request) => {
       phoneNumber: formattedPhoneNumber,
     });
 
-    // Create the user document in Firestore
     const userProfile = {
       uid: userRecord.uid,
       name: name,
-      phone: phone, // Store the original 10-digit number
+      phone: phone,
       email: email,
       role: role,
       agencyCode: role === "advisor" ? userCode : "",
@@ -132,12 +147,10 @@ export const registerNewUser = functions.https.onCall(async (request) => {
 
     await db.collection("users").doc(userRecord.uid).set(userProfile);
 
-    // Return a success message
     return {
       message: "Registration successful! Please wait for approval.",
     };
   } catch (error) {
-    // This will catch the 'auth/email-already-exists' from createUser
     if (
       typeof error === "object" &&
       error !== null &&
@@ -149,15 +162,48 @@ export const registerNewUser = functions.https.onCall(async (request) => {
         "This email address is already in use by Authentication."
       );
     }
-    // For other pre-defined errors, rethrow them
     if (error instanceof functions.https.HttpsError) {
       throw error;
     }
-    // For unexpected errors
     functions.logger.error("Unexpected error during user registration:", error);
     throw new functions.https.HttpsError(
       "unknown",
       "An unexpected error occurred."
     );
   }
+});
+
+export const deleteUserAccount = functions.https.onCall(async (request) => {
+  const callerDoc = await requireCallerRole(request, ["admin", "superadmin"]);
+  const targetUid = request.data?.uid as string | undefined;
+
+  if (!targetUid) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "The target uid is required."
+    );
+  }
+
+  const targetRef = db.collection("users").doc(targetUid);
+  const targetDoc = await targetRef.get();
+  if (!targetDoc.exists) {
+    throw new functions.https.HttpsError("not-found", "User not found.");
+  }
+
+  const callerRole = callerDoc.get("role");
+  const callerUid = callerDoc.id;
+  if (callerRole === "admin") {
+    const targetAdminId = targetDoc.get("adminId");
+    const targetRole = targetDoc.get("role");
+    if (targetRole !== "advisor" || targetAdminId !== callerUid) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Admins can only delete their own advisors."
+      );
+    }
+  }
+
+  await targetRef.delete();
+  await admin.auth().deleteUser(targetUid);
+  return {message: "User deleted successfully."};
 });

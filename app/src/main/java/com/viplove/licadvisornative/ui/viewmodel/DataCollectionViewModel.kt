@@ -419,6 +419,7 @@ class DataCollectionViewModel(
 
     private fun ClientDataSheet.toApiPayload(): Map<String, Any?> {
         return mapOf(
+            "id" to id,
             "created_by_advisor_id" to createdByAdvisorId,
             "admin_id" to adminId,
             "is_draft" to isDraft,

@@ -2,6 +2,7 @@ package com.viplove.licadvisornative.network
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.google.firebase.auth.FirebaseAuth
 
 object TokenManager {
     private const val PREF_NAME = "lic_auth_prefs"
@@ -28,7 +29,7 @@ object TokenManager {
     }
 
     fun getUserId(): String? {
-        return prefs.getString(KEY_USER_ID, null)
+        return FirebaseAuth.getInstance().currentUser?.uid ?: prefs.getString(KEY_USER_ID, null)
     }
 
     fun saveUserRole(role: String) {
@@ -44,6 +45,6 @@ object TokenManager {
     }
 
     fun isLoggedIn(): Boolean {
-        return getToken() != null
+        return FirebaseAuth.getInstance().currentUser != null
     }
 }

@@ -101,20 +101,6 @@ fun ApiGraphicsFooter.toGraphicFooter(): GraphicFooter {
 
 // ── ULIP Policy mapping ──
 
-fun ApiUlipPolicy.toUlipPolicy(): UlipPolicy {
-    return UlipPolicy(
-        id = id,
-        policyNumber = policyNumber,
-        policyHolderName = policyHolderName,
-        nav = nav,
-        units = units,
-        fundValue = fundValue,
-        asOfDate = asOfDate ?: 0L,
-        agentCode = agentCode,
-        adminId = adminId
-    )
-}
-
 // ── Datasheet mapping ──
 
 fun ApiDatasheet.toClientDataSheet(): ClientDataSheet {
@@ -271,9 +257,7 @@ fun ApiCircular.toCircular(): com.viplove.licadvisornative.model.Circular {
         category = category,
         fileName = fileName,
         fileUrl = fileUrl,
-        uploadedAt = try {
-            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", java.util.Locale.US).parse(createdAt ?: "")?.time ?: System.currentTimeMillis()
-        } catch (_: Exception) { System.currentTimeMillis() }
+        uploadedAt = createdAt?.let { parseTimestamp(it) } ?: System.currentTimeMillis()
     )
 }
 
@@ -286,15 +270,14 @@ fun ApiForm.toForm(): com.viplove.licadvisornative.model.Form {
         category = category,
         fileName = fileName,
         fileUrl = fileUrl,
-        uploadedAt = try {
-            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", java.util.Locale.US).parse(createdAt ?: "")?.time ?: System.currentTimeMillis()
-        } catch (_: Exception) { System.currentTimeMillis() }
+        uploadedAt = createdAt?.let { parseTimestamp(it) } ?: System.currentTimeMillis()
     )
 }
 
 // ── Helpers ──
 
 private fun parseTimestamp(dateString: String): Long? {
+    dateString.toLongOrNull()?.let { return it }
     return try {
         val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.US)
         format.parse(dateString)?.time

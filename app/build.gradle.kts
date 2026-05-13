@@ -75,6 +75,12 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.androidx.material.icons.extended)
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.functions)
+
     // Retrofit + OkHttp (API networking)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
