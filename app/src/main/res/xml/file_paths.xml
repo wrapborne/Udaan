@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- UPDATED: Changed from cache-path to files-path and specified an "images" subdirectory -->
+    <files-path
+        name="shared_images"
+        path="images/" />
+</paths>

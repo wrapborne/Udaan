@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">एलआईसी उड़ान</string>
+
+    <!-- Login Screen -->
+    <string name="login_title">एलआईसी उड़ान</string>
+    <string name="login_prompt">अपने खाते में लॉगिन करें</string>
+    <string name="email_label">ईमेल या कोड</string>
+    <string name="password_label">पासवर्ड</string>
+    <string name="forgot_password">पासवर्ड भूल गए?</string>
+    <string name="login_button">लॉगिन</string>
+    <string name="signup_prompt">खाता नहीं है? साइन अप करें</string>
+
+    <!-- Registration Screen -->
+    <string name="create_account_title">खाता बनाएं</string>
+    <string name="full_name_label">पूरा नाम</string>
+    <string name="phone_number_label">फ़ोन नंबर</string>
+    <string name="email_address_label">ईमेल पता</string>
+    <string name="advisor_code_label">आपका सलाहकार कोड</string>
+    <string name="do_code_label">विकास अधिकारी का डीओ कोड</string>
+    <string name="confirm_password_label">पासवर्ड की पुष्टि करें</string>
+    <string name="register_as_label">के रूप में पंजीकरण करें:</string>
+    <string name="role_advisor">वित्तीय सलाहकार</string>
+    <string name="role_do">विकास अधिकारी</string>
+    <string name="register_button">पंजीकरण करें</string>
+    <string name="login_prompt_from_register">पहले से ही एक खाता है? लॉगिन</string>
+
+    <!-- Forgot Password Screen -->
+    <string name="reset_password_title">पासवर्ड रीसेट</string>
+    <string name="reset_password_prompt">अपना ईमेल पता दर्ज करें और हम आपको अपना पासवर्ड रीसेट करने के लिए एक लिंक भेजेंगे।</string>
+    <string name="send_reset_link_button">रीसेट लिंक भेजें</string>
+    <string name="back_to_login_button">लॉगिन पर वापस जाएं</string>
+    <string name="graphics_management_soon">Graphics Management is currently being refined and will be available soon.</string>
+
+    <!-- Agent Dashboard -->
+    <string name="agent_dashboard_title">वित्तीय सलाहकार डैशबोर्ड</string>
+    <string name="my_policies_tab">मेरी पॉलिसियाँ</string>
+    <string name="checker_tab">चेकर</string>
+    <string name="drafts_tab">ड्राफ्ट</string>
+    <string name="graphics_tab">ग्राफिक्स</string>
+    <string name="my_profile_title">मेरी प्रोफाइल</string>
+    <string name="agency_code_label">एजेंसी कोड</string>
+    <string name="start_date_label">प्रारंभ तिथि</string>
+    <string name="close_button">बंद करें</string>
+    <string name="select_language">भाषा चुनें</string>
+    <string name="language_english">English</string>
+    <string name="language_hindi">हिंदी (Hindi)</string>
+    <string name="search_by_lead_name">लीड नाम से खोजें</string>
+    <string name="saved_drafts_title">सहेजे गए ड्राफ्ट</string>
+    <string name="saved_drafts_subtitle">इन फ़ॉर्म को भरना जारी रखें।</string>
+    <string name="submitted_forms_title">जमा किए गए फ़ॉर्म</string>
+    <string name="submitted_forms_subtitle">ये फ़ॉर्म पूरे हो चुके हैं और समीक्षा के लिए तैयार हैं।</string>
+    <string name="recently_archived_title">हाल ही में संग्रहीत</string>
+    <string name="recently_archived_subtitle">इन फ़ॉर्म को 7 दिनों तक पुनर्स्थापित किया जा सकता है।</string>
+
+    <!-- Admin Dashboard -->
+    <string name="admin_dashboard_title">डीओ का डैशबोर्ड</string>
+    <string name="proposals_tab">प्रस्ताव</string>
+    <string name="premium_summaries_tab">प्रीमियम सारांश</string>
+    <string name="advisor_management_tab">सलाहकार प्रबंधन</string>
+    <string name="leads_tab">लीड्स</string>
+    <string name="analytics_tab">एनालिटिक्स</string>
+
+    <!-- Superadmin Dashboard -->
+    <string name="superadmin_dashboard_title">सुपरएडमिन पैनल</string>
+    <string name="admin_management_tab">एडमिन प्रबंधन</string>
+
+    <!-- Common UI -->
+    <string name="search_by_name_policy_plan">नाम, पॉलिसी नंबर या प्लान से खोजें</string>
+    <string name="plan_filter">प्लान</string>
+    <string name="mode_filter">मोड</string>
+    <string name="financial_year_filter">वित्तीय वर्ष</string>
+    <string name="appraisal_year_filter">एजेंसी वर्ष</string>
+    <string name="total_policies_stat">कुल पॉलिसियाँ</string>
+    <string name="ananda_count_stat">आनंदा गिनती</string>
+
+    <!-- Non-Medical Checker Screen -->
+    <string name="checker_personal_income_details">व्यक्तिगत और आय विवरण</string>
+    <string name="age_label">आयु</string>
+    <string name="annual_income_label">वार्षिक आय (₹)</string>
+    <string name="resident_indian_checkbox">निवासी भारतीय?</string>
+    <string name="is_minor_checkbox">नाबालिग है?</string>
+    <string name="is_major_student_checkbox">मेजर छात्र है?</string>
+    <string name="checker_qual_occupation_details">योग्यता और व्यवसाय</string>
+    <string name="qualification_label">योग्यता</string>
+    <string name="profession_label">पेशा</string>
+    <string name="checker_plan_details">प्लान विवरण</string>
+    <string name="select_plan_number_label">प्लान नंबर चुनें</string>
+    <string name="check_eligibility_button">पात्रता जांचें</string>
+
+    <!-- Data Collection Screens -->
+    <string name="initial_questions_title">प्रारंभिक प्रश्न</string>
+    <string name="gender_of_proposer_q">प्रस्तावक का लिंग क्या है?</string>
+    <string name="male">पुरुष</string>
+    <string name="female">महिला</string>
+    <string name="proposer_same_as_la_q">क्या प्रस्तावक जीवन बीमा धारक के समान है?</string>
+    <string name="yes">हाँ</string>
+    <string name="no">नहीं</string>
+    <string name="plan_details_title">प्लान विवरण</string>
+    <string name="plan_premium_details_title">प्लान और प्रीमियम विवरण</string>
+    <string name="sum_assured_label">बीमा राशि</string>
+    <string name="plan_and_term_label">प्लान और अवधि</string>
+    <string name="mode_label">मोड</string>
+    <string name="select_doc_button">प्रारंभ तिथि चुनें</string>
+    <string name="nach_required_checkbox">NACH मैंडेट आवश्यक है?</string>
+    <string name="personal_details_title">व्यक्तिगत विवरण</string>
+    <string name="contact_no_label">संपर्क नंबर</string>
+    <string name="email_id_label">ईमेल आईडी</string>
+    <string name="aadhar_card_no_label">आधार कार्ड नंबर</string>
+    <string name="marital_status_label">वैवाहिक स्थिति</string>
+    <string name="father_name_label">पिता का नाम</string>
+    <string name="mother_name_label">माता का नाम</string>
+    <string name="it_assessee_q">क्या आईटी निर्धारिती है?</string>
+    <string name="occupation_details_title">व्यवसाय विवरण</string>
+    <string name="occupation_label">व्यवसाय</string>
+    <string name="nature_of_duties_label">कर्तव्यों की प्रकृति</string>
+    <string name="length_of_service_label">सेवा की अवधि</string>
+    <string name="name_of_employer_label">नियोक्ता का नाम</string>
+    <string name="education_label">शिक्षा</string>
+    <string name="armed_forces_q">सशस्त्र बलों में हैं?</string>
+    <string name="family_health_history_title">परिवार और स्वास्थ्य इतिहास</string>
+    <string name="height_cm_label">ऊंचाई (सेमी)</string>
+    <string name="weight_kg_label">वजन (किग्रा)</string>
+    <string name="state_of_health_label">स्वास्थ्य की स्थिति</string>
+    <string name="family_history_title">परिवार का इतिहास</string>
+    <string name="add_optional_family_members">वैकल्पिक परिवार के सदस्य जोड़ें</string>
+    <string name="add_spouse_button">पति/पत्नी जोड़ें</string>
+    <string name="add_brother_button">भाई जोड़ें</string>
+    <string name="add_sister_button">बहन जोड़ें</string>
+    <string name="add_son_button">बेटा जोड़ें</string>
+    <string name="add_daughter_button">बेटी जोड़ें</string>
+    <string name="nominee_bank_details_title">नामित और बैंक विवरण</string>
+    <string name="client_bank_details_title">ग्राहक बैंक विवरण (परिपक्वता/दावों के लिए)</string>
+    <string name="bank_name_label">बैंक का नाम</string>
+    <string name="ifsc_code_label">IFSC कोड</string>
+    <string name="account_no_label">खाता संख्या</string>
+    <string name="account_type_label">खाते का प्रकार</string>
+    <string name="nominee_details_title">नामित विवरण</string>
+    <string name="add_nominee_button">नामित जोड़ें</string>
+    <string name="alive">जीवित</string>
+    <string name="dead">मृत</string>
+    <string name="age">आयु</string>
+    <string name="age_at_death">मृत्यु के समय आयु</string>
+    <string name="cause_of_death">मृत्यु का कारण</string>
+    <string name="remove">हटाएं</string>
+    <string name="nominee">नामित</string>
+    <string name="nominee_name">नामित का नाम</string>
+    <string name="relation">रिश्ता</string>
+    <string name="percentage_share">% हिस्सा</string>
+    <string name="appointee">नियुक्त व्यक्ति</string>
+    <string name="appointee_name">नियुक्त व्यक्ति का नाम</string>
+    <string name="address_line_1">पता पंक्ति 1</string>
+    <string name="address_line_2">पता पंक्ति 2</string>
+    <string name="city">शहर</string>
+    <string name="pincode">पिन कोड</string>
+    <string name="district">जिला</string>
+    <string name="state">राज्य</string>
+    <string name="document_uploads_soon">दस्तावेज़ अपलोड (जल्द ही आ रहा है)</string>
+    <string name="back_button">वापस</string>
+    <string name="step_of">चरण %1$d का %2$d</string>
+    <string name="submit_button">जमा करें</string>
+    <string name="next_button">अगला</string>
+    <string name="housewife">गृहिणी</string>
+    <string name="working">कामकाजी</string>
+    <string name="housewife_working_q">क्या प्रस्तावक एक गृहिणी है या कामकाजी?</string>
+    <string name="housewife_propose_self">एक गृहिणी केवल अपने लिए प्रस्ताव कर सकती है।</string>
+    <string name="who_is_la_q">जीवन बीमा धारक कौन है?</string>
+    <string name="pwb_rider_q">PWB राइडर आवश्यक है?</string>
+    <string name="child_full_name">बच्चे का पूरा नाम</string>
+    <string name="child_education">शिक्षा विवरण (जैसे, स्कूल, कक्षा)</string>
+    <string name="address_same_as_proposer">पता प्रस्तावक के समान है</string>
+    <string name="female_insured_info_title">महिला बीमा धारक की जानकारी</string>
+    <string name="are_you_pregnant_q">क्या आप अभी गर्भवती हैं?</string>
+    <string name="select_last_delivery_date">अंतिम प्रसव की तारीख चुनें</string>
+    <string name="miscarriage_details">गर्भपात/सिजेरियन का विवरण</string>
+    <string name="husbands_details">पति का विवरण</string>
+    <string name="husbands_occupation">पति का व्यवसाय</string>
+    <string name="husbands_annual_income">पति की वार्षिक आय</string>
+    <string name="husbands_policy_details">पति के मौजूदा पॉलिसी विवरण</string>
+    <string name="comm_address">संचार पता (बॉन्ड डिलीवरी के लिए)</string>
+    <string name="perm_address_same">स्थायी पता संचार के समान है</string>
+    <string name="perm_address">स्थायी पता</string>
+    <string name="nach_bank_details">NACH बैंक विवरण (प्रीमियम भुगतान के लिए)</string>
+    <string name="appointee_details_minor">नियुक्त व्यक्ति का विवरण (चूंकि एक नामित नाबालिग है)</string>
+    <string name="spouse_name_label">पति/पत्नी का नाम</string>
+    <string name="pan_card_no_label">पैन कार्ड नंबर</string>
+    <string name="ok">ठीक है</string>
+    <string name="cancel">रद्द करें</string>
+
+    <!-- Forms and Circulars Feature -->
+    <string name="forms_tab">फॉर्म</string>
+    <string name="circulars_tab">परिपत्र</string>
+    <string name="upload_form">फॉर्म अपलोड करें</string>
+    <string name="upload_circular">परिपत्र अपलोड करें</string>
+    <string name="search_forms">फॉर्म खोजें...</string>
+    <string name="search_circulars">परिपत्र खोजें...</string>
+    <string name="all_categories">सभी श्रेणियाँ</string>
+    <string name="filter_by_category">श्रेणी से फ़िल्टर करें</string>
+    <string name="clear_filters">फ़िल्टर साफ़ करें</string>
+    <string name="no_forms_found">कोई फॉर्म नहीं मिला</string>
+    <string name="no_circulars_found">कोई परिपत्र नहीं मिला</string>
+    <string name="uploaded_by">द्वारा अपलोड किया गया: %1$s</string>
+    <string name="uploaded_on">%1$s को</string>
+    <string name="file_size">आकार: %1$s</string>
+    <string name="download">डाउनलोड करें</string>
+    <string name="preview">प्रीव्यू</string>
+    <string name="view_document">दस्तावेज़ देखें</string>
+    <string name="delete_document">हटाएं</string>
+    
+    <!-- Upload Dialog -->
+    <string name="select_file">फ़ाइल चुनें</string>
+    <string name="choose_file">PDF, PNG, या JPG फ़ाइल चुनें</string>
+    <string name="extracting_metadata">मेटाडेटा निकाला जा रहा है...</string>
+    <string name="auto_detected_metadata">स्वचालित पहचाना गया मेटाडेटा</string>
+    <string name="edit_metadata">मेटाडेटा संपादित करें</string>
+    <string name="form_title">फॉर्म शीर्षक</string>
+    <string name="circular_title">परिपत्र शीर्षक</string>
+    <string name="category">श्रेणी</string>
+    <string name="tags">टैग (अल्पविराम से अलग)</string>
+    <string name="description">विवरण (वैकल्पिक)</string>
+    <string name="detected_language">पहचानी गई भाषा: %1$s</string>
+    <string name="confidence_score">विश्वास: %1$d%%</string>
+    <string name="preview_text">पूर्वावलोकन:</string>
+    <string name="upload">अपलोड करें</string>
+    <string name="uploading">अपलोड हो रहा है... %1$d%%</string>
+    <string name="upload_success">अपलोड सफल रहा!</string>
+    <string name="upload_failed">अपलोड विफल: %1$s</string>
+    
+    <!-- Categories -->
+    <string name="category_policy_forms">पॉलिसी फॉर्म</string>
+    <string name="category_claim_forms">दावा फॉर्म</string>
+    <string name="category_registration_forms">पंजीकरण फॉर्म</string>
+    <string name="category_surrender_forms">सरेंडर फॉर्म</string>
+    <string name="category_loan_forms">ऋण फॉर्म</string>
+    <string name="category_medical_forms">चिकित्सा फॉर्म</string>
+    <string name="category_ulip_forms">यूलिप फॉर्म</string>
+    <string name="category_general_circulars">सामान्य परिपत्र</string>
+    <string name="category_policy_updates">पॉलिसी अपडेट</string>
+    <string name="category_announcements">घोषणाएं</string>
+    <string name="category_other">अन्य</string>
+    
+    <!-- Languages -->
+    <string name="language_hindi_detected">हिंदी</string>
+    <string name="language_english_detected">अंग्रेज़ी</string>
+    <string name="language_both">हिंदी और अंग्रेज़ी</string>
+    <string name="language_unknown">अज्ञात</string>
+    
+    <!-- Error Messages -->
+    <string name="error_invalid_file_type">अमान्य फ़ाइल प्रकार। केवल PDF, PNG, और JPG फ़ाइलों की अनुमति है।</string>
+    <string name="error_file_too_large">फ़ाइल का आकार 20 MB की सीमा से अधिक है।</string>
+    <string name="error_no_text_found">दस्तावेज़ में कोई टेक्स्ट नहीं मिला। सुनिश्चित करें कि छवि स्पष्ट और पठनीय है।</string>
+    <string name="error_extraction_failed">टेक्स्ट निष्कर्षण विफल। कृपया पुनः प्रयास करें।</string>
+    <string name="error_upload_permission">आपके पास अपलोड करने की अनुमति नहीं है।</string>
+    <string name="error_download_failed">डाउनलोड विफल। कृपया पुनः प्रयास करें।</string>
+    
+    <!-- Confirmations -->
+    <string name="confirm_delete_title">दस्तावेज़ हटाएं?</string>
+    <string name="confirm_delete_message">क्या आप वास्तव में इस दस्तावेज़ को हटाना चाहते हैं? यह कार्य पूर्ववत नहीं किया जा सकता।</string>
+    <string name="delete">हटाएं</string>
+    
+    <!-- Empty States -->
+    <string name="empty_forms_title">कोई फॉर्म उपलब्ध नहीं</string>
+    <string name="empty_forms_message">एडमिन द्वारा अपलोड किए जाने के बाद फॉर्म यहां दिखाई देंगे।</string>
+    <string name="empty_circulars_title">कोई परिपत्र उपलब्ध नहीं</string>
+    <string name="empty_circulars_message">अपलोड किए जाने के बाद परिपत्र यहां दिखाई देंगे।</string>
+    <string name="empty_search_title">कोई परिणाम नहीं</string>
+    <string name="empty_search_message">अपनी खोज या फ़िल्टर को समायोजित करने का प्रयास करें।</string>
+
+</resources>

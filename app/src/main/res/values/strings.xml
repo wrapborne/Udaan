@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">LIC Udaan</string>
+
+    <!-- Login Screen -->
+    <string name="remember_me">Remember me</string>
+    <string name="login_title">LIC Udaan</string>
+    <string name="login_prompt">Login to your account</string>
+    <string name="email_label">Email or Code</string>
+    <string name="password_label">Password</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="login_button">Login</string>
+    <string name="signup_prompt">Don\'t have an account? Sign Up</string>
+
+    <!-- Registration Screen -->
+    <string name="create_account_title">Create Account</string>
+    <string name="full_name_label">Full Name</string>
+    <string name="phone_number_label">Phone Number</string>
+    <string name="email_address_label">Email Address</string>
+    <string name="advisor_code_label">Your Advisor\'s Code</string>
+    <string name="do_code_label">Development Officer\'s DO Code</string>
+    <string name="confirm_password_label">Confirm Password</string>
+    <string name="register_as_label">Register as:</string>
+    <string name="role_advisor">Financial Advisor</string>
+    <string name="role_do">Development Officer</string>
+    <string name="register_button">Register</string>
+    <string name="login_prompt_from_register">Already have an account? Login</string>
+
+    <!-- Forgot Password Screen -->
+    <string name="reset_password_title">Reset Password</string>
+    <string name="reset_password_prompt">Enter your email address and we will send you a link to reset your password.</string>
+    <string name="send_reset_link_button">Send Reset Link</string>
+    <string name="back_to_login_button">Back to Login</string>
+    <string name="graphics_management_soon">Graphics Management is currently being refined and will be available soon.</string>
+
+    <!-- Agent Dashboard -->
+    <string name="agent_dashboard_title">Financial Advisor Dashboard</string>
+    <string name="my_policies_tab">My Policies</string>
+    <string name="checker_tab">Checker</string>
+    <string name="drafts_tab">Drafts</string>
+    <string name="graphics_tab">Graphics</string>
+    <string name="my_profile_title">My Profile</string>
+    <string name="agency_code_label">Agency Code</string>
+    <string name="start_date_label">Start Date</string>
+    <string name="close_button">Close</string>
+    <string name="select_language">Select Language</string>
+    <string name="language_english">English</string>
+    <string name="language_hindi">हिंदी (Hindi)</string>
+    <string name="search_by_lead_name">Search by Lead Name</string>
+    <string name="saved_drafts_title">Saved Drafts</string>
+    <string name="saved_drafts_subtitle">Continue filling out these forms.</string>
+    <string name="submitted_forms_title">Submitted Forms</string>
+    <string name="submitted_forms_subtitle">These forms are complete and ready for review.</string>
+    <string name="recently_archived_title">Recently Archived</string>
+    <string name="recently_archived_subtitle">These forms can be restored for up to 7 days.</string>
+
+    <!-- Admin Dashboard -->
+    <string name="admin_dashboard_title">DO\'s Dashboard</string>
+    <string name="proposals_tab">Proposals</string>
+    <string name="premium_summaries_tab">Premium Summaries</string>
+    <string name="advisor_management_tab">Advisor Management</string>
+    <string name="leads_tab">Leads</string>
+    <string name="analytics_tab">Analytics</string>
+
+    <!-- Superadmin Dashboard -->
+    <string name="superadmin_dashboard_title">Superadmin Panel</string>
+    <string name="admin_management_tab">Admin Management</string>
+
+    <!-- Common UI -->
+    <string name="search_by_name_policy_plan">Search by Name, Policy No or Plan</string>
+    <string name="plan_filter">Plan</string>
+    <string name="mode_filter">Mode</string>
+    <string name="financial_year_filter">Financial Year</string>
+    <string name="appraisal_year_filter">Agency Year</string>
+    <string name="total_policies_stat">Total Policies</string>
+    <string name="ananda_count_stat">ANANDA Count</string>
+
+    <!-- Non-Medical Checker Screen -->
+    <string name="checker_personal_income_details">Personal &amp; Income Details</string>
+    <string name="age_label">Age</string>
+    <string name="annual_income_label">Annual Income (₹)</string>
+    <string name="resident_indian_checkbox">Resident Indian?</string>
+    <string name="is_minor_checkbox">Is Minor?</string>
+    <string name="is_major_student_checkbox">Is Major Student?</string>
+    <string name="checker_qual_occupation_details">Qualification &amp; Occupation</string>
+    <string name="qualification_label">Qualification</string>
+    <string name="profession_label">Profession</string>
+    <string name="checker_plan_details">Plan Details</string>
+    <string name="select_plan_number_label">Select Plan Number</string>
+    <string name="check_eligibility_button">Check Eligibility</string>
+
+    <!-- Data Collection Screens -->
+    <string name="initial_questions_title">Initial Questions</string>
+    <string name="gender_of_proposer_q">What is the Gender of the Proposer?</string>
+    <string name="male">Male</string>
+    <string name="female">Female</string>
+    <string name="proposer_same_as_la_q">Is Proposer same as the Life Assured?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="plan_details_title">Plan Details</string>
+    <string name="plan_premium_details_title">Plan &amp; Premium Details</string>
+    <string name="sum_assured_label">Sum Assured</string>
+    <string name="plan_and_term_label">Plan and Term</string>
+    <string name="mode_label">Mode</string>
+    <string name="select_doc_button">Select Date of Commencement</string>
+    <string name="nach_required_checkbox">NACH Mandate Required?</string>
+    <string name="personal_details_title">Personal Details</string>
+    <string name="contact_no_label">Contact No</string>
+    <string name="email_id_label">Email ID</string>
+    <string name="aadhar_card_no_label">Aadhar Card No.</string>
+    <string name="marital_status_label">Marital Status</string>
+    <string name="father_name_label">Father Name</string>
+    <string name="mother_name_label">Mother Name</string>
+    <string name="it_assessee_q">Is IT Assessee?</string>
+    <string name="occupation_details_title">Occupation Details</string>
+    <string name="occupation_label">Occupation</string>
+    <string name="nature_of_duties_label">Nature of Duties</string>
+    <string name="length_of_service_label">Length of Service</string>
+    <string name="name_of_employer_label">Name of Employer</string>
+    <string name="education_label">Education</string>
+    <string name="armed_forces_q">Is in Armed Forces?</string>
+    <string name="family_health_history_title">Family &amp; Health History</string>
+    <string name="height_cm_label">Height (cm)</string>
+    <string name="weight_kg_label">Weight (kg)</string>
+    <string name="state_of_health_label">State of Health</string>
+    <string name="family_history_title">Family History</string>
+    <string name="add_optional_family_members">Add Optional Family Members</string>
+    <string name="add_spouse_button">Add Spouse</string>
+    <string name="add_brother_button">Add Brother</string>
+    <string name="add_sister_button">Add Sister</string>
+    <string name="add_son_button">Add Son</string>
+    <string name="add_daughter_button">Add Daughter</string>
+    <string name="nominee_bank_details_title">Nominee &amp; Bank Details</string>
+    <string name="client_bank_details_title">Client Bank Details (for maturity/claims)</string>
+    <string name="bank_name_label">Bank Name</string>
+    <string name="ifsc_code_label">IFSC Code</string>
+    <string name="account_no_label">Account No.</string>
+    <string name="account_type_label">Account Type</string>
+    <string name="nominee_details_title">Nominee Details</string>
+    <string name="add_nominee_button">Add Nominee</string>
+    <string name="alive">Alive</string>
+    <string name="dead">Dead</string>
+    <string name="age">Age</string>
+    <string name="age_at_death">Age at Death</string>
+    <string name="cause_of_death">Cause of Death</string>
+    <string name="remove">Remove</string>
+    <string name="nominee">Nominee</string>
+    <string name="nominee_name">Nominee Name</string>
+    <string name="relation">Relation</string>
+    <string name="percentage_share">% of Share</string>
+    <string name="appointee">Appointee</string>
+    <string name="appointee_name">Appointee Name</string>
+    <string name="address_line_1">Address Line 1</string>
+    <string name="address_line_2">Address Line 2</string>
+    <string name="city">City</string>
+    <string name="pincode">Pincode</string>
+    <string name="district">District</string>
+    <string name="state">State</string>
+    <string name="document_uploads_soon">Document Uploads (Coming Soon)</string>
+    <string name="back_button">Back</string>
+    <string name="step_of">Step %1$d of %2$d</string>
+    <string name="submit_button">Submit</string>
+    <string name="next_button">Next</string>
+    <string name="housewife">Housewife</string>
+    <string name="working">Working</string>
+    <string name="housewife_working_q">Is the Proposer a Housewife or Working?</string>
+    <string name="housewife_propose_self">A housewife can only propose for herself.</string>
+    <string name="who_is_la_q">Who is the Life Assured?</string>
+    <string name="pwb_rider_q">PWB Rider Required?</string>
+    <string name="child_full_name">Child\'s Full Name</string>
+    <string name="child_education">Education Details (e.g., School, Class)</string>
+    <string name="address_same_as_proposer">Address is same as Proposer</string>
+    <string name="female_insured_info_title">Female Insured Information</string>
+    <string name="are_you_pregnant_q">Are you pregnant now?</string>
+    <string name="select_last_delivery_date">Select Date of Last Delivery</string>
+    <string name="miscarriage_details">Details of miscarriage/caesarean</string>
+    <string name="husbands_details">Husband\'s Details</string>
+    <string name="husbands_occupation">Husband\'s Occupation</string>
+    <string name="husbands_annual_income">Husband\'s Annual Income</string>
+    <string name="husbands_policy_details">Husband\'s Existing Policy Details</string>
+    <string name="comm_address">Communication Address (for Bond Delivery)</string>
+    <string name="perm_address_same">Permanent address is same as communication</string>
+    <string name="perm_address">Permanent Address</string>
+    <string name="nach_bank_details">NACH Bank Details (for premium payment)</string>
+    <string name="appointee_details_minor">Appointee Details (since a nominee is a minor)</string>
+    <string name="spouse_name_label">Spouse Name</string>
+    <string name="pan_card_no_label">PAN Card No.</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Forms and Circulars Feature -->
+    <string name="forms_tab">Forms</string>
+    <string name="circulars_tab">Circulars</string>
+    <string name="upload_form">Upload Form</string>
+    <string name="upload_circular">Upload Circular</string>
+    <string name="search_forms">Search forms...</string>
+    <string name="search_circulars">Search circulars...</string>
+    <string name="all_categories">All Categories</string>
+    <string name="filter_by_category">Filter by Category</string>
+    <string name="clear_filters">Clear Filters</string>
+    <string name="no_forms_found">No forms found</string>
+    <string name="no_circulars_found">No circulars found</string>
+    <string name="uploaded_by">Uploaded by: %1$s</string>
+    <string name="uploaded_on">on %1$s</string>
+    <string name="file_size">Size: %1$s</string>
+    <string name="download">Download</string>
+    <string name="preview">Preview</string>
+    <string name="view_document">View Document</string>
+    <string name="delete_document">Delete</string>
+    
+    <!-- Upload Dialog -->
+    <string name="select_file">Select File</string>
+    <string name="choose_file">Choose PDF, PNG, or JPG file</string>
+    <string name="extracting_metadata">Extracting metadata...</string>
+    <string name="auto_detected_metadata">Auto-detected Metadata</string>
+    <string name="edit_metadata">Edit Metadata</string>
+    <string name="form_title">Form Title</string>
+    <string name="circular_title">Circular Title</string>
+    <string name="category">Category</string>
+    <string name="tags">Tags (comma-separated)</string>
+    <string name="description">Description (optional)</string>
+    <string name="detected_language">Detected Language: %1$s</string>
+    <string name="confidence_score">Confidence: %1$d%%</string>
+    <string name="preview_text">Preview:</string>
+    <string name="upload">Upload</string>
+    <string name="uploading">Uploading... %1$d%%</string>
+    <string name="upload_success">Upload successful!</string>
+    <string name="upload_failed">Upload failed: %1$s</string>
+    
+    <!-- Categories -->
+    <string name="category_policy_forms">Policy Forms</string>
+    <string name="category_claim_forms">Claim Forms</string>
+    <string name="category_registration_forms">Registration Forms</string>
+    <string name="category_surrender_forms">Surrender Forms</string>
+    <string name="category_loan_forms">Loan Forms</string>
+    <string name="category_medical_forms">Medical Forms</string>
+    <string name="category_ulip_forms">ULIP Forms</string>
+    <string name="category_general_circulars">General Circulars</string>
+    <string name="category_policy_updates">Policy Updates</string>
+    <string name="category_announcements">Announcements</string>
+    <string name="category_other">Other</string>
+    
+    <!-- Languages -->
+    <string name="language_hindi_detected">Hindi</string>
+    <string name="language_english_detected">English</string>
+    <string name="language_both">Hindi &amp; English</string>
+    <string name="language_unknown">Unknown</string>
+    
+    <!-- Error Messages -->
+    <string name="error_invalid_file_type">Invalid file type. Only PDF, PNG, and JPG files allowed.</string>
+    <string name="error_file_too_large">File size exceeds 20 MB limit.</string>
+    <string name="error_no_text_found">No text found in document. Ensure image is clear and readable.</string>
+    <string name="error_extraction_failed">Text extraction failed. Please try again.</string>
+    <string name="error_upload_permission">You don\'t have permission to upload.</string>
+    <string name="error_download_failed">Download failed. Please try again.</string>
+    
+    <!-- Confirmations -->
+    <string name="confirm_delete_title">Delete Document?</string>
+    <string name="confirm_delete_message">Are you sure you want to delete this document? This action cannot be undone.</string>
+    <string name="delete">Delete</string>
+    
+    <!-- Empty States -->
+    <string name="empty_forms_title">No Forms Available</string>
+    <string name="empty_forms_message">Forms will appear here once uploaded by the admin.</string>
+    <string name="empty_circulars_title">No Circulars Available</string>
+    <string name="empty_circulars_message">Circulars will appear here once uploaded.</string>
+    <string name="empty_search_title">No Results</string>
+    <string name="empty_search_message">Try adjusting your search or filters.</string>
+
+</resources>
