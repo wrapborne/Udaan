@@ -12,6 +12,7 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -97,11 +98,13 @@ class FirebaseApi {
     }
 
     suspend fun lookupEmailByCode(request: LookupByCodeRequest): Response<LookupEmailResponse> {
-        val normalized = request.code.trim()
-        val docs = firestore.collection("users").get().await().documents
-        val match = docs.firstOrNull {
-            it.getString("agencyCode").equals(normalized, ignoreCase = true) ||
-                it.getString("doCode").equals(normalized, ignoreCase = true)
+        val normalized = normalizeCode(request.code)
+        val variants = buildCodeVariants(normalized)
+        val match = withTimeout(15_000) {
+            findUserByCodeVariants("agencyCode", variants)
+                ?: findUserByCodeVariants("doCode", variants)
+                ?: findUserByCodeVariants("agency_code", variants)
+                ?: findUserByCodeVariants("do_code", variants)
         }
         return if (match != null) {
             Response.success(LookupEmailResponse(match.getString("email").orEmpty()))
@@ -209,10 +212,10 @@ class FirebaseApi {
         val all = firestore.collection("policies").get().await().documents.map { it.toApiPolicy() }
         val filtered = all.filter { policy ->
             when {
-                !agentCode.isNullOrBlank() -> policy.agentCode.equals(agentCode, ignoreCase = true)
+                !agentCode.isNullOrBlank() -> codesMatch(policy.agentCode, agentCode)
                 current.role == "superadmin" -> true
                 current.role == "admin" -> policy.adminId == current.id
-                else -> policy.agentCode.equals(current.agencyCode, ignoreCase = true)
+                else -> codesMatch(policy.agentCode, current.agencyCode)
             }
         }
         return Response.success(filtered.sortedByDescending { it.doc ?: 0L })
@@ -223,17 +226,19 @@ class FirebaseApi {
         val duplicates = mutableListOf<String>()
         request.policies.chunked(50).forEach { chunk ->
             chunk.forEach { payload ->
-                val existing = findDocumentByField("policies", "policyNumber", payload.policyNumber)
+                val existing = findPolicyDocumentByNumber(payload.policyNumber)
                 if (existing != null && !request.overwrite) {
                     duplicates += payload.policyNumber
                 } else {
                     val target = existing ?: firestore.collection("policies").document()
                     target.set(
                         mapOf(
+                            "proposalNumber" to payload.proposalNumber,
                             "policyNumber" to payload.policyNumber,
                             "plan" to payload.plan.orEmpty(),
                             "mode" to payload.mode.orEmpty(),
                             "doc" to payload.doc,
+                            "dateOfCompletion" to payload.dateOfCompletion,
                             "premium" to payload.premium,
                             "agentCode" to payload.agentCode,
                             "adminId" to current.adminRootId(),
@@ -241,8 +246,8 @@ class FirebaseApi {
                             "enachDate" to payload.enachDate.orEmpty(),
                             "agentName" to payload.agentName.orEmpty(),
                             "isAnanda" to payload.isAnanda,
-                            "isUlip" to false,
-                            "createdAt" to System.currentTimeMillis()
+                            "isUlip" to payload.isUlip,
+                            "createdAt" to (payload.createdAt ?: System.currentTimeMillis())
                         ),
                         SetOptions.merge()
                     ).await()
@@ -254,7 +259,7 @@ class FirebaseApi {
 
     suspend fun checkPolicyDuplicates(request: CheckDuplicatesRequest): Response<DuplicatesResponse> {
         val duplicates = request.policyNumbers.distinct().filter { policyNumber ->
-            findDocumentByField("policies", "policyNumber", policyNumber) != null
+            findPolicyDocumentByNumber(policyNumber) != null
         }
         return Response.success(DuplicatesResponse(duplicates = duplicates))
     }
@@ -262,7 +267,7 @@ class FirebaseApi {
     suspend fun batchUpdatePaymentDates(request: BatchUpdatePaymentDatesRequest): Response<BatchUpdateResult> {
         var updated = 0
         request.updates.forEach { change ->
-            val doc = findDocumentByField("policies", "policyNumber", change.policyNumber)
+            val doc = findPolicyDocumentByNumber(change.policyNumber)
             if (doc != null) {
                 doc.set(mapOf("lastPremiumPaidDate" to change.lastPremiumPaidDate), SetOptions.merge()).await()
                 updated++
@@ -325,7 +330,7 @@ class FirebaseApi {
             val ownerPass = when (current.role) {
                 "superadmin" -> true
                 "admin" -> summary.adminId == current.id
-                else -> summary.agencyCode.equals(current.agencyCode, ignoreCase = true)
+                else -> codesMatch(summary.agencyCode, current.agencyCode)
             }
             val monthPass = reportMonth == null || summary.reportMonth == reportMonth
             ownerPass && monthPass
@@ -339,7 +344,7 @@ class FirebaseApi {
         request.summaries.forEach { payload ->
             val existing = firestore.collection("premiumSummaries").get().await().documents.firstOrNull {
                 it.getString("reportMonth") == payload.reportMonth &&
-                    it.getString("agencyCode").equals(payload.agencyCode, ignoreCase = true)
+                    codesMatch(it.getString("agencyCode"), payload.agencyCode)
             }
             val key = "${payload.reportMonth}-${payload.agencyCode}"
             if (existing != null && !request.overwrite) {
@@ -443,7 +448,7 @@ class FirebaseApi {
                 when (current.role) {
                     "superadmin" -> true
                     "admin" -> it.adminId == current.id
-                    else -> it.agentCode.equals(current.agencyCode, ignoreCase = true)
+                    else -> codesMatch(it.agentCode, current.agencyCode)
                 }
             }
         return Response.success(policies)
@@ -563,6 +568,51 @@ class FirebaseApi {
         it.getString(field).equals(value, ignoreCase = true)
     }?.reference
 
+    private suspend fun findPolicyDocumentByNumber(policyNumber: String) =
+        firestore.collection("policies").get().await().documents.firstOrNull {
+            it.getString("policyNumber").equals(policyNumber, ignoreCase = true) ||
+                it.getString("policy_number").equals(policyNumber, ignoreCase = true)
+        }?.reference
+
+    private suspend fun findUserByCodeVariants(
+        field: String,
+        variants: List<String>
+    ): DocumentSnapshot? {
+        variants.forEach { variant ->
+            val snapshot = firestore.collection("users")
+                .whereEqualTo(field, variant)
+                .limit(1)
+                .get()
+                .await()
+            if (!snapshot.isEmpty) {
+                return snapshot.documents.first()
+            }
+        }
+        return null
+    }
+
+    private fun codesMatch(left: String?, right: String?): Boolean {
+        val normalizedLeft = normalizeCode(left)
+        val normalizedRight = normalizeCode(right)
+        return normalizedLeft.isNotEmpty() && normalizedLeft == normalizedRight
+    }
+
+    private fun buildCodeVariants(normalizedCode: String): List<String> {
+        if (normalizedCode.isBlank()) return emptyList()
+        val withLeadingZero = if (normalizedCode.startsWith("0")) normalizedCode else "0$normalizedCode"
+        return listOf(normalizedCode, withLeadingZero).distinct()
+    }
+
+    private fun normalizeCode(code: String?): String {
+        val cleaned = code.orEmpty()
+            .trim()
+            .replace(" ", "")
+            .uppercase(Locale.ROOT)
+        if (cleaned.isEmpty()) return ""
+        val withoutLeadingZeros = cleaned.trimStart('0')
+        return if (withoutLeadingZeros.isNotEmpty()) withoutLeadingZeros else "0"
+    }
+
     private suspend fun uploadAsset(folder: String, bytes: ByteArray, extension: String): AssetUpload {
         val fileName = "${UUID.randomUUID()}.$extension"
         val path = "$folder/$fileName"
@@ -580,36 +630,57 @@ class FirebaseApi {
     }
 
     private fun DocumentSnapshot.toApiUser(): ApiUser {
+        val agencyCode = getString("agencyCode") ?: getString("agency_code")
+        val doCode = getString("doCode") ?: getString("do_code")
         return ApiUser(
             id = id,
             email = getString("email").orEmpty(),
             name = getString("name").orEmpty(),
             phone = getString("phone").orEmpty(),
-            role = getString("role").orEmpty(),
-            isApproved = getBoolean("isApproved") ?: false,
-            agencyCode = getString("agencyCode"),
-            doCode = getString("doCode"),
-            adminId = getString("adminId"),
-            profilePicturePath = getString("profilePictureUrl"),
-            startDate = get("startDate")?.toString()
+            role = canonicalizeRole(
+                rawRole = getString("role") ?: getString("userRole") ?: getString("user_role"),
+                agencyCode = agencyCode,
+                doCode = doCode
+            ),
+            isApproved = (getBoolean("isApproved") ?: getBoolean("is_approved")) ?: false,
+            agencyCode = agencyCode,
+            doCode = doCode,
+            adminId = getString("adminId") ?: getString("admin_id"),
+            profilePicturePath = getString("profilePictureUrl")
+                ?: getString("profile_picture_url")
+                ?: getString("profile_picture_path"),
+            startDate = (get("startDate") ?: get("start_date"))?.toString()
         )
     }
 
     private fun DocumentSnapshot.toApiPolicy(): ApiPolicy {
+        val proposalNumber = getString("proposalNumber") ?: getString("proposal_number")
+        val policyNumber = (getString("policyNumber") ?: getString("policy_number")).orEmpty()
+        val derivedAnanda = sequenceOf(
+            proposalNumber?.trim(),
+            policyNumber.trim()
+        ).filterNotNull().any { it.matches(Regex("[89]\\d{5}")) }
         return ApiPolicy(
             id = id,
-            policyNumber = getString("policyNumber").orEmpty(),
+            proposalNumber = proposalNumber,
+            policyNumber = policyNumber,
             plan = getString("plan"),
             mode = getString("mode"),
             doc = getLong("doc"),
+            dateOfCompletion = getLong("dateOfCompletion") ?: getLong("date_of_completion"),
             premium = getDouble("premium") ?: 0.0,
-            agentCode = getString("agentCode").orEmpty(),
-            adminId = getString("adminId").orEmpty(),
-            shortName = getString("shortName"),
-            enachDate = getString("enachDate"),
-            agentName = getString("agentName"),
-            isAnanda = getBoolean("isAnanda") ?: false,
-            lastPremiumPaidDate = getLong("lastPremiumPaidDate")
+            agentCode = (getString("agentCode") ?: getString("agent_code")).orEmpty(),
+            adminId = (getString("adminId") ?: getString("admin_id")).orEmpty(),
+            shortName = getString("shortName") ?: getString("short_name"),
+            enachDate = getString("enachDate") ?: getString("enach_date"),
+            agentName = getString("agentName") ?: getString("agent_name"),
+            isAnanda = derivedAnanda ||
+                getBoolean("isAnanda") == true ||
+                getBoolean("is_ananda") == true ||
+                getBoolean("ananda") == true,
+            lastPremiumPaidDate = getLong("lastPremiumPaidDate") ?: getLong("last_premium_paid_date"),
+            isUlip = getBoolean("isUlip") ?: getBoolean("is_ulip") ?: false,
+            createdAt = getLong("createdAt") ?: getLong("created_at")
         )
     }
 
@@ -731,6 +802,24 @@ class FirebaseApi {
     }
 
     private fun ApiUser.adminRootId(): String = if (role == "admin") id else adminId.orEmpty()
+
+    private fun canonicalizeRole(rawRole: String?, agencyCode: String?, doCode: String?): String {
+        return when (rawRole?.trim()?.lowercase(Locale.ROOT)) {
+            "advisor", "agent", "financial advisor", "financial_advisor", "fa" -> "advisor"
+            "admin", "do", "development officer", "development_officer", "development officer (do)" -> "admin"
+            "superadmin", "super admin", "super_admin" -> "superadmin"
+            null, "" -> when {
+                !doCode.isNullOrBlank() -> "admin"
+                !agencyCode.isNullOrBlank() -> "advisor"
+                else -> ""
+            }
+            else -> when {
+                !doCode.isNullOrBlank() && rawRole.equals("officer", ignoreCase = true) -> "admin"
+                !agencyCode.isNullOrBlank() && rawRole.equals("user", ignoreCase = true) -> "advisor"
+                else -> rawRole.trim().lowercase(Locale.ROOT)
+            }
+        }
+    }
 
     private fun <T> errorResponse(code: Int, message: String): Response<T> {
         return Response.error(

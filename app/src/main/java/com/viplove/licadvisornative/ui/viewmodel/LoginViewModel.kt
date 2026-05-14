@@ -1,6 +1,7 @@
 package com.viplove.licadvisornative.ui.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.viplove.licadvisornative.network.ApiClient
@@ -8,12 +9,17 @@ import com.viplove.licadvisornative.network.LoginRequest
 import com.viplove.licadvisornative.network.LookupByCodeRequest
 import com.viplove.licadvisornative.network.TokenManager
 import com.viplove.licadvisornative.util.CredentialsManager
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        private const val TAG = "LoginViewModel"
+    }
 
     data class LoginCredentials(
         val email: String = "",
@@ -55,21 +61,28 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             try {
+                Log.d(TAG, "loginUser started for input='$emailOrCode'")
                 _loginUiState.value = LoginUiState.Loading
 
                 // Determine if input is email or code
                 val email = if (emailOrCode.contains("@")) {
+                    Log.d(TAG, "Treating input as email")
                     emailOrCode
                 } else {
+                    Log.d(TAG, "Treating input as code; starting lookup")
                     lookupEmailByCode(emailOrCode)
                 }
+                Log.d(TAG, "Resolved login email='$email'")
 
                 if (email.isBlank()) {
+                    Log.d(TAG, "No email resolved from code lookup")
                     _loginUiState.value = LoginUiState.Error("No account found with this code.")
                     return@launch
                 }
 
+                Log.d(TAG, "Calling api.login")
                 val response = ApiClient.api.login(LoginRequest(email, password))
+                Log.d(TAG, "api.login completed with code=${response.code()}")
 
                 if (response.isSuccessful) {
                     val authResponse = response.body()!!
@@ -95,7 +108,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     _loginUiState.value = LoginUiState.Error(message)
                 }
+            } catch (e: TimeoutCancellationException) {
+                Log.e(TAG, "Code lookup timed out", e)
+                _loginUiState.value = LoginUiState.Error("Code lookup timed out. Please try again or use email login.")
             } catch (e: Exception) {
+                Log.e(TAG, "loginUser failed", e)
                 _loginUiState.value = LoginUiState.Error("Network error. Please check your connection.")
             }
         }
@@ -103,13 +120,23 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun lookupEmailByCode(code: String): String {
         return try {
-            val response = ApiClient.api.lookupEmailByCode(LookupByCodeRequest(code))
+            Log.d(TAG, "lookupEmailByCode request='$code'")
+            val response = withTimeout(15_000) {
+                ApiClient.api.lookupEmailByCode(LookupByCodeRequest(code))
+            }
+            Log.d(TAG, "lookupEmailByCode responseCode=${response.code()}")
             if (response.isSuccessful) {
-                response.body()?.email ?: ""
+                response.body()?.email.orEmpty().also {
+                    Log.d(TAG, "lookupEmailByCode resolvedEmail='$it'")
+                }
             } else {
                 ""
             }
+        } catch (e: TimeoutCancellationException) {
+            Log.e(TAG, "lookupEmailByCode timeout", e)
+            throw e
         } catch (e: Exception) {
+            Log.e(TAG, "lookupEmailByCode failed", e)
             ""
         }
     }

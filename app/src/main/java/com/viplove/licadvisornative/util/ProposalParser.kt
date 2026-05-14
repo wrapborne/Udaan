@@ -45,13 +45,15 @@ object ProposalParser {
                         val completionTimestamp = formatDateToTimestamp(completionStr)
                         // --- END OF NEW LOGIC ---
 
-                        val isAnanda = proposalNo.matches(Regex("\\d+")) && proposalNo.length == 6
+                        val normalizedProposalNo = proposalNo.trim()
+                        val isAnanda = normalizedProposalNo.matches(Regex("[89]\\d{5}"))
 
                         val formattedDoc = formatTimestampToDDMMYYYY(docTimestamp)
                         val enachDate = getEnachDate(formattedDoc, mode)
 
                         policies.add(
                             Policy(
+                                proposalNumber = normalizedProposalNo,
                                 policyNumber = policyNo,
                                 plan = plan,
                                 mode = mode,

@@ -67,10 +67,12 @@ data class ApiUser(
 
 data class ApiPolicy(
     val id: String,
+    @SerializedName("proposal_number") val proposalNumber: String? = null,
     @SerializedName("policy_number") val policyNumber: String,
     val plan: String?,
     val mode: String?,
     val doc: Long?,
+    @SerializedName("date_of_completion") val dateOfCompletion: Long? = null,
     val premium: Double,
     @SerializedName("agent_code") val agentCode: String,
     @SerializedName("admin_id") val adminId: String,
@@ -78,7 +80,9 @@ data class ApiPolicy(
     @SerializedName("enach_date") val enachDate: String?,
     @SerializedName("agent_name") val agentName: String?,
     @SerializedName("is_ananda") val isAnanda: Boolean,
-    @SerializedName("last_premium_paid_date") val lastPremiumPaidDate: Long?
+    @SerializedName("last_premium_paid_date") val lastPremiumPaidDate: Long?,
+    @SerializedName("is_ulip") val isUlip: Boolean = false,
+    @SerializedName("created_at") val createdAt: Long? = null
 )
 
 data class BatchPoliciesRequest(
@@ -87,16 +91,20 @@ data class BatchPoliciesRequest(
 )
 
 data class PolicyPayload(
+    @SerializedName("proposal_number") val proposalNumber: String? = null,
     @SerializedName("policy_number") val policyNumber: String,
     val plan: String? = null,
     val mode: String? = null,
     val doc: Long? = null,
+    @SerializedName("date_of_completion") val dateOfCompletion: Long? = null,
     val premium: Double = 0.0,
     @SerializedName("agent_code") val agentCode: String,
     @SerializedName("short_name") val shortName: String? = null,
     @SerializedName("enach_date") val enachDate: String? = null,
     @SerializedName("agent_name") val agentName: String? = null,
-    @SerializedName("is_ananda") val isAnanda: Boolean = false
+    @SerializedName("is_ananda") val isAnanda: Boolean = false,
+    @SerializedName("is_ulip") val isUlip: Boolean = false,
+    @SerializedName("created_at") val createdAt: Long? = null
 )
 
 data class BatchResult(

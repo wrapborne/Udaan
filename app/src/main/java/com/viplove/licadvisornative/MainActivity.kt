@@ -38,6 +38,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.viplove.licadvisornative.network.ApiClient
 import com.viplove.licadvisornative.network.TokenManager
 import com.viplove.licadvisornative.ui.screens.*
 import com.viplove.licadvisornative.ui.theme.LICAdvisorNativeTheme
@@ -85,12 +86,31 @@ fun SplashScreen(navController: NavController) {
             Log.d(TAG, "SplashScreen: No token found.")
             safeNavigate("login")
         } else {
-            val role = TokenManager.getUserRole()
+            var role = TokenManager.getUserRole()
+            if (role.isNullOrBlank()) {
+                Log.d(TAG, "SplashScreen: Cached role missing. Refreshing from Firebase profile.")
+                val meResponse = runCatching { ApiClient.api.me() }.getOrNull()
+                if (meResponse?.isSuccessful == true) {
+                    val user = meResponse.body()
+                    if (user != null) {
+                        TokenManager.saveUserId(user.id)
+                        TokenManager.saveUserRole(user.role)
+                        role = user.role
+                        Log.d(TAG, "SplashScreen: Refreshed role from profile as '$role'")
+                    }
+                }
+            }
             Log.d(TAG, "SplashScreen: Token found. Role: '$role'")
             val destination = when (role) {
                 "admin" -> "admin_dashboard"
                 "superadmin" -> "superadmin_dashboard"
-                else -> "agent_dashboard"
+                "advisor" -> "agent_dashboard"
+                else -> {
+                    Log.w(TAG, "SplashScreen: Unable to resolve role. Clearing session and returning to login.")
+                    runCatching { ApiClient.api.logout() }
+                    TokenManager.clearAll()
+                    "login"
+                }
             }
             safeNavigate(destination)
         }

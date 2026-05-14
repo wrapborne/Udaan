@@ -6,6 +6,7 @@ package com.viplove.licadvisornative.model
  */
 data class Policy(
     var policyId: String = "",
+    var proposalNumber: String = "",
     var policyNumber: String = "",
     var plan: String = "",
     var mode: String = "",

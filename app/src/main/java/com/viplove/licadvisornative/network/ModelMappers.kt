@@ -28,10 +28,12 @@ fun ApiUser.toUser(): User {
 fun ApiPolicy.toPolicy(): Policy {
     return Policy(
         policyId = id,
+        proposalNumber = proposalNumber ?: "",
         policyNumber = policyNumber,
         plan = plan ?: "",
         mode = mode ?: "",
         doc = doc ?: 0L,
+        dateOfCompletion = dateOfCompletion ?: 0L,
         isAnanda = isAnanda,
         premium = premium,
         agentCode = agentCode,
@@ -39,22 +41,28 @@ fun ApiPolicy.toPolicy(): Policy {
         shortName = shortName ?: "",
         enachDate = enachDate ?: "",
         agentName = agentName ?: "",
-        lastPremiumPaidDate = lastPremiumPaidDate
+        lastPremiumPaidDate = lastPremiumPaidDate,
+        isUlip = isUlip,
+        createdAt = createdAt ?: System.currentTimeMillis()
     )
 }
 
 fun Policy.toPayload(): PolicyPayload {
     return PolicyPayload(
+        proposalNumber = proposalNumber.ifBlank { null },
         policyNumber = policyNumber,
         plan = plan,
         mode = mode,
         doc = doc,
+        dateOfCompletion = dateOfCompletion.takeIf { it > 0L },
         premium = premium,
         agentCode = agentCode,
         shortName = shortName,
         enachDate = enachDate,
         agentName = agentName,
-        isAnanda = isAnanda
+        isAnanda = isAnanda,
+        isUlip = isUlip,
+        createdAt = createdAt.takeIf { it > 0L }
     )
 }
 

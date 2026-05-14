@@ -5,11 +5,9 @@ import androidx.lifecycle.ViewModel
 import com.viplove.licadvisornative.domain.FilterPoliciesUseCase
 import com.viplove.licadvisornative.model.Policy
 import com.viplove.licadvisornative.model.User
+import com.viplove.licadvisornative.util.PolicyFilter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 
 /**
  * An abstract base class for ViewModels that need to display and filter a list of policies.
@@ -99,28 +97,11 @@ abstract class BasePolicyViewModel : ViewModel() {
     // --- UI-related Helper Functions (These remain in the ViewModel) ---
 
     protected open fun generateFinancialYearOptions(): List<String> {
-        val options = mutableListOf<String>()
-        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-        for (i in 0..5) {
-            val endYear = currentYear - i
-            val startYear = endYear - 1
-            options.add("Financial Year $startYear - $endYear")
-        }
-        return options
+        return PolicyFilter.generateFinancialYearOptions()
     }
 
     protected open fun generateAppraisalYearOptions(startDateMillis: Long?): List<String> {
-        if (startDateMillis == null) return emptyList()
-        val options = mutableListOf<String>()
-        val startCal = Calendar.getInstance().apply { timeInMillis = startDateMillis }
-        val today = Calendar.getInstance()
-        val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
-        while (startCal.before(today) || startCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
-            val endCal = (startCal.clone() as Calendar).apply { add(Calendar.YEAR, 1) }
-            options.add("Appraisal ${yearFormat.format(startCal.time)} - ${yearFormat.format(endCal.time)}")
-            startCal.add(Calendar.YEAR, 1)
-        }
-        return options.reversed()
+        return PolicyFilter.generateAppraisalYearOptions(startDateMillis)
     }
 
     /**

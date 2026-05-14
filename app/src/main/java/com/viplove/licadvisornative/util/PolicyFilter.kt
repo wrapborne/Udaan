@@ -45,9 +45,7 @@ object PolicyFilter {
      */
     private fun filterByDateRange(policy: Policy, startDate: Long?, endDate: Long?): Boolean {
         if (startDate == null || endDate == null) return true
-        // Use the dateOfCompletion field for filtering.
-        // Add a null check to safely handle policies that might not have this date.
-        val proposalDate = policy.dateOfCompletion ?: return false
+        val proposalDate = getEffectiveFilterDate(policy) ?: return false
         return proposalDate in startDate until endDate
     }
 
@@ -103,6 +101,15 @@ object PolicyFilter {
         // BUT less than 365 days (1 year) - policies >1 year overdue are considered lapsed
         val daysDifference = ((now.timeInMillis - nextDueCal.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
         return daysDifference > 30 && daysDifference <= 365
+    }
+
+    fun getEffectiveFilterDate(policy: Policy): Long? {
+        return when {
+            policy.dateOfCompletion > 0L -> policy.dateOfCompletion
+            policy.doc > 0L -> policy.doc
+            policy.createdAt > 0L -> policy.createdAt
+            else -> null
+        }
     }
 
 
