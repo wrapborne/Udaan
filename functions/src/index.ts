@@ -4,6 +4,14 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 const db = admin.firestore();
 
+/**
+ * Loads the caller profile and verifies it has one of the allowed roles.
+ * @param {functions.https.CallableRequest} request Callable request from the
+ * authenticated client.
+ * @param {string[]} allowedRoles Roles that can proceed with the action.
+ * @return {Promise<admin.firestore.DocumentSnapshot>} Caller Firestore
+ * document snapshot.
+ */
 async function requireCallerRole(
   request: functions.https.CallableRequest,
   allowedRoles: string[]
@@ -70,7 +78,10 @@ export const registerNewUser = functions.https.onCall(async (request) => {
   }
 
   try {
-    const emailQuery = await db.collection("users").where("email", "==", email).get();
+    const emailQuery = await db
+      .collection("users")
+      .where("email", "==", email)
+      .get();
     if (!emailQuery.empty) {
       throw new functions.https.HttpsError(
         "already-exists",
@@ -78,7 +89,10 @@ export const registerNewUser = functions.https.onCall(async (request) => {
       );
     }
 
-    const phoneQuery = await db.collection("users").where("phone", "==", phone).get();
+    const phoneQuery = await db
+      .collection("users")
+      .where("phone", "==", phone)
+      .get();
     if (!phoneQuery.empty) {
       throw new functions.https.HttpsError(
         "already-exists",
@@ -95,7 +109,9 @@ export const registerNewUser = functions.https.onCall(async (request) => {
     if (!existingUserByCode.empty) {
       throw new functions.https.HttpsError(
         "already-exists",
-        role === "advisor" ? "agency_code already exists." : "do_code already exists."
+        role === "advisor" ?
+          "agency_code already exists." :
+          "do_code already exists."
       );
     }
 
