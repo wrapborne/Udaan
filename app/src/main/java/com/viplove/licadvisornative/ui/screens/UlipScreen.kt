@@ -5,7 +5,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,6 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.viplove.licadvisornative.model.NavData
 import com.viplove.licadvisornative.model.Policy
 import com.viplove.licadvisornative.model.UlipProjectionResult
+import com.viplove.licadvisornative.ui.components.SolidPill
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.viewmodel.UlipViewModel
 import java.text.NumberFormat
 import java.util.*
@@ -45,12 +49,15 @@ fun UlipScreen(
     val tabs = listOf("Policy Status", "NAV", "Fund Value Calculator", "Maturity Calculator")
 
     Column(modifier = Modifier.fillMaxSize()) {
-        ScrollableTabRow(selectedTabIndex = selectedTabIndex, edgePadding = 16.dp) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
+        ) {
+            itemsIndexed(tabs) { index, title ->
+                SolidPill(
+                    label = title,
                     selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
-                    text = { Text(title) }
+                    onClick = { selectedTabIndex = index }
                 )
             }
         }

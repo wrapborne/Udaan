@@ -11,6 +11,10 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
+import com.viplove.licadvisornative.model.CommissionBillPdfResult
+import com.viplove.licadvisornative.model.CommissionRowStatus
+import com.viplove.licadvisornative.model.PremiumDuePdfResult
+import com.viplove.licadvisornative.model.PremiumPdfImportApplyResult
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
@@ -105,6 +109,10 @@ class FirebaseApi {
                 ?: findUserByCodeVariants("doCode", variants)
                 ?: findUserByCodeVariants("agency_code", variants)
                 ?: findUserByCodeVariants("do_code", variants)
+                ?: findUserByCodeVariants("userCode", variants)
+                ?: findUserByCodeVariants("user_code", variants)
+                ?: findUserByCodeVariants("code", variants)
+                ?: findUserByNormalizedCode(variants)
         }
         return if (match != null) {
             Response.success(LookupEmailResponse(match.getString("email").orEmpty()))
@@ -276,6 +284,201 @@ class FirebaseApi {
         return Response.success(BatchUpdateResult(updated = updated))
     }
 
+    suspend fun applyPremiumDueImport(result: PremiumDuePdfResult): Response<PremiumPdfImportApplyResult> {
+        val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
+        if (!canImportForAgent(current, result.agentCode)) {
+            return errorResponse(403, "You can import only your own advisor PDF.")
+        }
+
+        var updatedPolicies = 0
+        val warnings = result.warnings.toMutableList()
+        val importId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val adminId = current.adminRootId()
+        val storedAgentCode = appStoredAgentCode(result.agentCode)
+
+        result.rows.forEach { row ->
+            val dueRef = firestore.collection("premium_due_items")
+                .document(dueDocumentId(storedAgentCode, row.policyNumber, row.fupMonth))
+            dueRef.set(
+                mapOf(
+                    "agentCode" to storedAgentCode,
+                    "sourceAgentCode" to result.agentCode,
+                    "adminId" to adminId,
+                    "agentName" to result.agentName,
+                    "policyNumber" to row.policyNumber,
+                    "policyHolderName" to row.policyHolderName,
+                    "dateOfCommencement" to row.dateOfCommencement,
+                    "planTerm" to row.planTerm,
+                    "mode" to row.mode,
+                    "fupMonth" to row.fupMonth,
+                    "dueKey" to row.dueKey,
+                    "premiumYearType" to row.premiumYearType.name,
+                    "isLapsed" to row.isLapsed,
+                    "status" to if (row.isLapsed) "LAPSED" else "DUE",
+                    "installmentPremium" to row.installmentPremium,
+                    "dueCount" to row.dueCount,
+                    "gst" to row.gst,
+                    "totalPremium" to row.totalPremium,
+                    "estimatedCommission" to row.estimatedCommission,
+                    "reportMonth" to result.reportMonth,
+                    "sourceImportId" to importId,
+                    "importedAt" to now
+                ),
+                SetOptions.merge()
+            ).await()
+
+            if (row.isLapsed) {
+                val policyDoc = findPolicyDocumentByNumber(row.policyNumber)
+                if (policyDoc != null) {
+                    policyDoc.set(
+                        mapOf(
+                            "policyStatus" to "LAPSED",
+                            "lastDueImportId" to importId,
+                            "lastDueImportAt" to now
+                        ),
+                        SetOptions.merge()
+                    ).await()
+                    updatedPolicies++
+                } else {
+                    warnings += "Policy ${row.policyNumber} was not found while marking lapsed."
+                }
+            }
+        }
+
+        return Response.success(
+            PremiumPdfImportApplyResult(
+                importedRows = result.rows.size,
+                updatedPolicies = updatedPolicies,
+                warnings = warnings.distinct()
+            )
+        )
+    }
+
+    suspend fun applyCommissionBillImport(result: CommissionBillPdfResult): Response<PremiumPdfImportApplyResult> {
+        val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
+        if (!canImportForAgent(current, result.agentCode)) {
+            return errorResponse(403, "You can import only your own advisor PDF.")
+        }
+
+        var updatedPolicies = 0
+        var clearedDueItems = 0
+        var reversalRows = 0
+        val warnings = result.warnings.toMutableList()
+        val importId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val adminId = current.adminRootId()
+        val storedAgentCode = appStoredAgentCode(result.agentCode)
+
+        for (row in result.rows) {
+            val paymentRef = firestore.collection("premium_payment_history")
+                .document(paymentDocumentId(storedAgentCode, row.policyNumber, row.dueDate, row.adjustmentDate, row.status.name))
+            try {
+                paymentRef.set(
+                    mapOf(
+                        "agentCode" to storedAgentCode,
+                        "sourceAgentCode" to result.agentCode,
+                        "adminId" to adminId,
+                        "agentName" to result.agentName,
+                        "policyNumber" to row.policyNumber,
+                        "policyHolderName" to row.policyHolderName,
+                        "planTerm" to row.planTerm,
+                        "dueDate" to row.dueDate,
+                        "riskDate" to row.riskDate,
+                        "cbo" to row.cbo,
+                        "adjustmentDate" to row.adjustmentDate,
+                        "premium" to row.premium,
+                        "commission" to row.commission,
+                        "status" to row.status.name,
+                        "paymentKey" to row.paymentKey,
+                        "reportMonth" to result.reportMonth,
+                        "batch" to result.batch,
+                        "processedDate" to result.processedDate,
+                        "sourceImportId" to importId,
+                        "importedAt" to now
+                    ),
+                    SetOptions.merge()
+                ).await()
+            } catch (e: Exception) {
+                return errorResponse(403, "Commission import failed while saving payment history for policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+            }
+
+            if (row.status == CommissionRowStatus.COOLING_OFF_REVERSAL) {
+                reversalRows++
+                val policyDoc = try {
+                    findPolicyDocumentByNumber(row.policyNumber)
+                } catch (e: Exception) {
+                    return errorResponse(403, "Commission import failed while finding reversal policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+                }
+                if (policyDoc != null) {
+                    try {
+                        policyDoc.set(
+                            mapOf(
+                                "policyStatus" to "COOLING_OFF_REVERSAL",
+                                "lastReversalDueDate" to row.dueDate,
+                                "lastReversalImportId" to importId,
+                                "lastReversalImportAt" to now
+                            ),
+                            SetOptions.merge()
+                        ).await()
+                    } catch (e: Exception) {
+                        return errorResponse(403, "Commission import failed while marking reversal for policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+                    }
+                    updatedPolicies++
+                }
+                continue
+            }
+
+            val paidDueDateMillis = parseDateMillis(row.dueDate)
+            val policyDoc = try {
+                findPolicyDocumentByNumber(row.policyNumber)
+            } catch (e: Exception) {
+                return errorResponse(403, "Commission import failed while finding policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+            }
+            if (policyDoc != null) {
+                val updates = mutableMapOf<String, Any>(
+                    "policyStatus" to "ACTIVE",
+                    "lastPaidDueDate" to row.dueDate,
+                    "lastPaymentAdjustmentDate" to row.adjustmentDate,
+                    "lastPaymentImportId" to importId,
+                    "lastPaymentImportAt" to now
+                )
+                paidDueDateMillis?.let { updates["lastPremiumPaidDate"] = it }
+                try {
+                    policyDoc.set(updates, SetOptions.merge()).await()
+                } catch (e: Exception) {
+                    return errorResponse(403, "Commission import failed while updating paid status for policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+                }
+                updatedPolicies++
+            } else {
+                warnings += "Policy ${row.policyNumber} was not found while applying payment."
+            }
+
+            val dueMonth = dueMonthFromDueDate(row.dueDate)
+            if (dueMonth.isNotBlank()) {
+                try {
+                    firestore.collection("premium_due_items")
+                        .document(dueDocumentId(storedAgentCode, row.policyNumber, dueMonth))
+                        .delete()
+                        .await()
+                } catch (e: Exception) {
+                    return errorResponse(403, "Commission import failed while clearing due item for policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+                }
+                clearedDueItems++
+            }
+        }
+
+        return Response.success(
+            PremiumPdfImportApplyResult(
+                importedRows = result.rows.size,
+                updatedPolicies = updatedPolicies,
+                clearedDueItems = clearedDueItems,
+                reversalRows = reversalRows,
+                warnings = warnings.distinct()
+            )
+        )
+    }
+
     suspend fun getDatasheets(
         isDraft: Boolean? = null,
         isArchived: Boolean? = null
@@ -325,7 +528,7 @@ class FirebaseApi {
 
     suspend fun getPremiumSummaries(reportMonth: String? = null): Response<List<ApiPremiumSummary>> {
         val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
-        val docs = firestore.collection("premiumSummaries").get().await().documents
+        val docs = firestore.collection("premium_summaries").get().await().documents
         val filtered = docs.map { it.toApiPremiumSummary() }.filter { summary ->
             val ownerPass = when (current.role) {
                 "superadmin" -> true
@@ -342,7 +545,7 @@ class FirebaseApi {
         val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
         val duplicates = mutableListOf<String>()
         request.summaries.forEach { payload ->
-            val existing = firestore.collection("premiumSummaries").get().await().documents.firstOrNull {
+            val existing = firestore.collection("premium_summaries").get().await().documents.firstOrNull {
                 it.getString("reportMonth") == payload.reportMonth &&
                     codesMatch(it.getString("agencyCode"), payload.agencyCode)
             }
@@ -350,7 +553,7 @@ class FirebaseApi {
             if (existing != null && !request.overwrite) {
                 duplicates += key
             } else {
-                val ref = existing?.reference ?: firestore.collection("premiumSummaries").document()
+                val ref = existing?.reference ?: firestore.collection("premium_summaries").document()
                 ref.set(
                     mapOf(
                         "reportMonth" to payload.reportMonth,
@@ -367,7 +570,7 @@ class FirebaseApi {
     }
 
     suspend fun checkSummaryDuplicates(request: CheckSummaryDuplicatesRequest): Response<SummaryDuplicatesResponse> {
-        val existingCodes = firestore.collection("premiumSummaries").get().await().documents
+        val existingCodes = firestore.collection("premium_summaries").get().await().documents
             .filter { it.getString("reportMonth") == request.reportMonth }
             .mapNotNull { it.getString("agencyCode") }
             .distinct()
@@ -375,7 +578,7 @@ class FirebaseApi {
     }
 
     suspend fun getGraphicsTemplates(): Response<List<ApiGraphicsTemplate>> {
-        val templates = firestore.collection("graphicsTemplates").get().await().documents
+        val templates = firestore.collection("graphic_templates").get().await().documents
             .map { it.toApiGraphicsTemplate() }
             .sortedByDescending { it.createdAt?.toLongOrNull() ?: 0L }
         return Response.success(templates)
@@ -389,7 +592,7 @@ class FirebaseApi {
         val title = name.readUtf8()
         val role = visibleToRole.readUtf8()
         val upload = uploadAsset("graphics/templates", image.bytes(), image.extensionOrDefault("jpg"))
-        val ref = firestore.collection("graphicsTemplates").document()
+        val ref = firestore.collection("graphic_templates").document()
         val createdAt = System.currentTimeMillis().toString()
         ref.set(
             mapOf(
@@ -404,12 +607,12 @@ class FirebaseApi {
     }
 
     suspend fun deleteGraphicsTemplate(id: String): Response<MessageResponse> {
-        deleteAssetDocument("graphicsTemplates", id)
+        deleteAssetDocument("graphic_templates", id)
         return Response.success(MessageResponse("Template deleted successfully."))
     }
 
     suspend fun getGraphicsFooters(): Response<List<ApiGraphicsFooter>> {
-        val footers = firestore.collection("graphicsFooters").get().await().documents
+        val footers = firestore.collection("graphic_footers").get().await().documents
             .map { it.toApiGraphicsFooter() }
             .sortedByDescending { it.createdAt?.toLongOrNull() ?: 0L }
         return Response.success(footers)
@@ -421,7 +624,7 @@ class FirebaseApi {
         visibleToRole: RequestBody
     ): Response<ApiGraphicsFooter> {
         val upload = uploadAsset("graphics/footers", image.bytes(), image.extensionOrDefault("png"))
-        val ref = firestore.collection("graphicsFooters").document()
+        val ref = firestore.collection("graphic_footers").document()
         val createdAt = System.currentTimeMillis().toString()
         ref.set(
             mapOf(
@@ -436,13 +639,13 @@ class FirebaseApi {
     }
 
     suspend fun deleteGraphicsFooter(id: String): Response<MessageResponse> {
-        deleteAssetDocument("graphicsFooters", id)
+        deleteAssetDocument("graphic_footers", id)
         return Response.success(MessageResponse("Footer deleted successfully."))
     }
 
     suspend fun getUlipPolicies(): Response<List<ApiUlipPolicy>> {
         val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
-        val policies = firestore.collection("ulipPolicies").get().await().documents
+        val policies = firestore.collection("ulip_policies").get().await().documents
             .map { it.toApiUlipPolicy() }
             .filter {
                 when (current.role) {
@@ -456,7 +659,7 @@ class FirebaseApi {
 
     suspend fun createUlipPolicy(body: Map<String, @JvmSuppressWildcards Any?>): Response<ApiUlipPolicy> {
         val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
-        val ref = firestore.collection("ulipPolicies").document()
+        val ref = firestore.collection("ulip_policies").document()
         ref.set(
             body.toMutableMap().apply {
                 put("adminId", current.adminRootId())
@@ -543,7 +746,7 @@ class FirebaseApi {
     }
 
     suspend fun getConfig(key: String): Response<ApiConfig> {
-        val doc = firestore.collection("config").document(key).get().await()
+        val doc = firestore.collection("app_config").document(key).get().await()
         if (doc.exists()) {
             return Response.success(ApiConfig(key = key, value = doc.get("value") ?: ""))
         }
@@ -591,10 +794,95 @@ class FirebaseApi {
         return null
     }
 
+    private suspend fun findUserByNormalizedCode(variants: List<String>): DocumentSnapshot? {
+        if (variants.isEmpty()) return null
+        val users = firestore.collection("users").get().await().documents
+        return users.firstOrNull { user ->
+            val candidateCodes = listOf(
+                user.getString("agencyCode"),
+                user.getString("doCode"),
+                user.getString("agency_code"),
+                user.getString("do_code"),
+                user.getString("userCode"),
+                user.getString("user_code"),
+                user.getString("code")
+            )
+            candidateCodes.any { candidate ->
+                variants.any { variant -> codesMatch(candidate, variant) }
+            }
+        }
+    }
+
     private fun codesMatch(left: String?, right: String?): Boolean {
         val normalizedLeft = normalizeCode(left)
         val normalizedRight = normalizeCode(right)
         return normalizedLeft.isNotEmpty() && normalizedLeft == normalizedRight
+    }
+
+    private fun canImportForAgent(current: ApiUser, agentCode: String): Boolean {
+        return when (current.role) {
+            "superadmin", "admin" -> true
+            else -> codesMatchForImport(current.agencyCode, agentCode)
+        }
+    }
+
+    private fun codesMatchForImport(left: String?, right: String?): Boolean {
+        val normalizedLeft = normalizeCodeForImport(left)
+        val normalizedRight = normalizeCodeForImport(right)
+        return normalizedLeft.isNotEmpty() && normalizedLeft == normalizedRight
+    }
+
+    private fun normalizeCodeForImport(code: String?): String {
+        val cleaned = code.orEmpty()
+            .trim()
+            .replace(" ", "")
+            .uppercase(Locale.ROOT)
+            .removePrefix("LIC")
+        val withoutLeadingZeros = cleaned.trimStart('0')
+        return if (withoutLeadingZeros.isNotEmpty()) withoutLeadingZeros else cleaned
+    }
+
+    private fun appStoredAgentCode(code: String?): String {
+        return code.orEmpty()
+            .trim()
+            .replace(" ", "")
+            .uppercase(Locale.ROOT)
+            .removePrefix("LIC")
+    }
+
+    private fun dueDocumentId(agentCode: String, policyNumber: String, dueMonth: String): String {
+        return listOf(agentCode, policyNumber, dueMonth).joinToString("_").safeDocumentId()
+    }
+
+    private fun paymentDocumentId(
+        agentCode: String,
+        policyNumber: String,
+        dueDate: String,
+        adjustmentDate: String,
+        status: String
+    ): String {
+        return listOf(agentCode, policyNumber, dueDate, adjustmentDate, status).joinToString("_").safeDocumentId()
+    }
+
+    private fun parseDateMillis(date: String): Long? {
+        return try {
+            SimpleDateFormat("dd/MM/yyyy", Locale.US).parse(date)?.time
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun dueMonthFromDueDate(dueDate: String): String {
+        val parts = dueDate.split("/")
+        return if (parts.size == 3) "${parts[1]}/${parts[2]}" else ""
+    }
+
+    private fun String.safeDocumentId(): String {
+        return replace("/", "-")
+            .replace("\\", "-")
+            .replace("#", "-")
+            .replace("?", "-")
+            .trim()
     }
 
     private fun buildCodeVariants(normalizedCode: String): List<String> {
@@ -679,7 +967,8 @@ class FirebaseApi {
                 getBoolean("is_ananda") == true ||
                 getBoolean("ananda") == true,
             lastPremiumPaidDate = getLong("lastPremiumPaidDate") ?: getLong("last_premium_paid_date"),
-            isUlip = getBoolean("isUlip") ?: getBoolean("is_ulip") ?: false,
+            isUlip = getBoolean("isUlip") ?: getBoolean("is_ulip")
+                ?: com.viplove.licadvisornative.util.UlipPlanDetector.isUlipPlan(getString("plan")),
             createdAt = getLong("createdAt") ?: getLong("created_at")
         )
     }

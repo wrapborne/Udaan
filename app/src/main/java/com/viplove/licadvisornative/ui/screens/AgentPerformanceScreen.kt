@@ -10,11 +10,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.viplove.licadvisornative.model.Policy
+import com.viplove.licadvisornative.ui.components.PillChip
+import com.viplove.licadvisornative.ui.components.SectionCard
+import com.viplove.licadvisornative.ui.components.StatTile
+import com.viplove.licadvisornative.ui.theme.BrandDanger
+import com.viplove.licadvisornative.ui.theme.BrandGold
+import com.viplove.licadvisornative.ui.theme.BrandSuccess
+import com.viplove.licadvisornative.ui.theme.Dimens
 
 
 import java.text.SimpleDateFormat
@@ -51,7 +57,6 @@ fun AgentPerformanceTab(
 ) {
     var selectedPeriod by remember { mutableStateOf("This Month") }
     val periods = listOf("This Month", "This Quarter", "This Year")
-    var periodExpanded by remember { mutableStateOf(false) }
     
     val performanceData = remember(policies, selectedPeriod) {
         calculatePerformanceData(policies, selectedPeriod)
@@ -65,49 +70,29 @@ fun AgentPerformanceTab(
     
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(Dimens.ScreenHPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
     ) {
         // Period Selector
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            SectionCard {
                 Text(
                     "Agent Performance Report",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                
-                ExposedDropdownMenuBox(
-                    expanded = periodExpanded,
-                    onExpandedChange = { periodExpanded = it }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
                 ) {
-                    OutlinedTextField(
-                        value = selectedPeriod,
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = periodExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .width(150.dp),
-                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = periodExpanded,
-                        onDismissRequest = { periodExpanded = false }
-                    ) {
-                        periods.forEach { period ->
-                            DropdownMenuItem(
-                                text = { Text(period) },
-                                onClick = {
-                                    selectedPeriod = period
-                                    periodExpanded = false
-                                }
-                            )
-                        }
+                    periods.forEach { period ->
+                        PillChip(
+                            label = period,
+                            selected = selectedPeriod == period,
+                            onClick = { selectedPeriod = period },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -117,7 +102,7 @@ fun AgentPerformanceTab(
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
                 SummaryStatCard(
                     modifier = Modifier.weight(1f),
@@ -141,15 +126,16 @@ fun AgentPerformanceTab(
             Text(
                 "Agent Rankings",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = Dimens.GutterSm)
             )
         }
         
         // Top Performers by Policies
         item {
             PerformanceRankingCard(
-                title = "🏆 Top Performers - Policies",
+                title = "Top Performers - Policies",
                 data = performanceData.sortedByDescending { it.currentPeriodPolicies }.take(5),
                 valueSelector = { "${it.currentPeriodPolicies} policies" },
                 growthSelector = { it.policyGrowth }
@@ -159,7 +145,7 @@ fun AgentPerformanceTab(
         // Top Performers by Premium
         item {
             PerformanceRankingCard(
-                title = "💰 Top Performers - Premium",
+                title = "Top Performers - Premium",
                 data = performanceData.sortedByDescending { it.currentPeriodPremium }.take(5),
                 valueSelector = { "₹${formatPremium(it.currentPeriodPremium)}" },
                 growthSelector = { it.premiumGrowth.toInt() }
@@ -169,7 +155,7 @@ fun AgentPerformanceTab(
         // Growth Leaders
         item {
             PerformanceRankingCard(
-                title = "📈 Growth Leaders",
+                title = "Growth Leaders",
                 data = performanceData.sortedByDescending { it.policyGrowth }.take(5),
                 valueSelector = { "${it.currentPeriodPolicies} policies" },
                 growthSelector = { it.policyGrowth }
@@ -181,8 +167,9 @@ fun AgentPerformanceTab(
             Text(
                 "All Agents",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = Dimens.GutterSm)
             )
         }
         
@@ -200,28 +187,14 @@ fun SummaryStatCard(
     previousValue: String,
     isPositiveGrowth: Boolean
 ) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(currentValue, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    if (isPositiveGrowth) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = if (isPositiveGrowth) Color(0xFF4CAF50) else Color(0xFFF44336)
-                )
-                Text(
-                    "vs $previousValue",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
+    StatTile(
+        label = title,
+        value = currentValue,
+        modifier = modifier,
+        delta = "vs $previousValue",
+        deltaUp = isPositiveGrowth,
+        accent = if (isPositiveGrowth) BrandSuccess else BrandDanger
+    )
 }
 
 @Composable
@@ -231,30 +204,28 @@ fun PerformanceRankingCard(
     valueSelector: (AgentPerformanceData) -> String,
     growthSelector: (AgentPerformanceData) -> Int
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            
+    SectionCard(title = title) {
+        Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
             data.forEachIndexed { index, agentData ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = Dimens.GutterXs),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val medal = when (index) {
-                            0 -> "🥇"
-                            1 -> "🥈"
-                            2 -> "🥉"
-                            else -> "${index + 1}."
-                        }
-                        Text(medal, modifier = Modifier.width(30.dp))
+                        Text(
+                            "#${index + 1}",
+                            modifier = Modifier.width(34.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (index < 3) BrandGold else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
                         Text(
                             agentData.agentName.ifEmpty { agentData.agentCode },
-                            fontWeight = if (index < 3) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (index < 3) FontWeight.SemiBold else FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -263,7 +234,7 @@ fun PerformanceRankingCard(
                         if (growth != 0) {
                             Text(
                                 text = if (growth > 0) " +$growth" else " $growth",
-                                color = if (growth > 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                                color = if (growth > 0) BrandSuccess else BrandDanger,
                                 fontSize = 12.sp
                             )
                         }
@@ -276,8 +247,8 @@ fun PerformanceRankingCard(
 
 @Composable
 fun AgentPerformanceCard(data: AgentPerformanceData) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    SectionCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -286,8 +257,9 @@ fun AgentPerformanceCard(data: AgentPerformanceData) {
                 Column {
                     Text(
                         data.agentName.ifEmpty { data.agentCode },
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (data.agentName.isNotEmpty()) {
                         Text(
@@ -304,20 +276,18 @@ fun AgentPerformanceCard(data: AgentPerformanceData) {
                     Icon(
                         if (growth >= 0) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
                         contentDescription = null,
-                        tint = if (growth >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                        tint = if (growth >= 0) BrandSuccess else BrandDanger,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
                         "${String.format("%.1f", kotlin.math.abs(growth))}%",
-                        color = if (growth >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
-                        fontWeight = FontWeight.Bold
+                        color = if (growth >= 0) BrandSuccess else BrandDanger,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -336,11 +306,11 @@ fun AgentPerformanceCard(data: AgentPerformanceData) {
 fun MetricItem(label: String, value: String, growth: Int?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontWeight = FontWeight.Bold)
+        Text(value, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         if (growth != null) {
             val color = when {
-                growth > 0 -> Color(0xFF4CAF50)
-                growth < 0 -> Color(0xFFF44336)
+                growth > 0 -> BrandSuccess
+                growth < 0 -> BrandDanger
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
             Text(

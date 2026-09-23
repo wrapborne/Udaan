@@ -9,6 +9,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,7 +34,22 @@ import androidx.navigation.NavController
 import com.viplove.licadvisornative.model.ClientDataSheet
 import com.viplove.licadvisornative.model.Policy // <-- Uses the main Policy model
 import com.viplove.licadvisornative.model.User
+import com.viplove.licadvisornative.ui.components.AppScaffold
+import com.viplove.licadvisornative.ui.components.AppSearchBar
+import com.viplove.licadvisornative.ui.components.EmptyState
+import com.viplove.licadvisornative.ui.components.ExpandableGroupCard
+import com.viplove.licadvisornative.ui.components.OutlinedDateButton
+import com.viplove.licadvisornative.ui.components.PillChip
+import com.viplove.licadvisornative.ui.components.SectionCard
+import com.viplove.licadvisornative.ui.components.StatTile
+import com.viplove.licadvisornative.ui.components.UploadAction
+import com.viplove.licadvisornative.ui.components.UploadButtonRow
+import com.viplove.licadvisornative.ui.theme.BrandDanger
+import com.viplove.licadvisornative.ui.theme.BrandGold
+import com.viplove.licadvisornative.ui.theme.BrandSuccess
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.viewmodel.AdminViewModel
+import com.viplove.licadvisornative.util.AdvisorPolicyPdfSharer
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,86 +60,91 @@ fun AdminDashboardScreen(
     adminViewModel: AdminViewModel = viewModel()
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
-    // --- UPDATED: Added "Performance" tab ---
-    val tabs = listOf("Proposals", "ULIP", "Data Analysis", "Forms", "Circulars", "Premium Summaries", "Performance", "Advisor Management", "Leads", "Analytics", "Checker", "Graphics")
+    val tabs = listOf(
+        "Proposals",
+        "PDF Import",
+        "ULIP",
+        "Data Analysis",
+        "Premium Summaries",
+        "Performance",
+        "Advisor Management",
+        "Leads",
+        "Analytics",
+        "Checker",
+        "Forms",
+        "Circulars",
+        "Graphics"
+    )
+    val context = LocalContext.current
+    val isOnline by remember {
+        com.viplove.licadvisornative.util.NetworkMonitor.observeConnectivity(context)
+    }.collectAsState(initial = true)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("DO's Dashboard") },
-                actions = {
-                    IconButton(onClick = { adminViewModel.refreshData() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Data")
-                    }
-                    IconButton(onClick = {
-                        adminViewModel.logout()
-                        navController.navigate("login") { popUpTo(0) }
-                    }) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        // Network monitoring
-        val context = LocalContext.current
-        val isOnline by remember {
-            com.viplove.licadvisornative.util.NetworkMonitor.observeConnectivity(context)
-        }.collectAsState(initial = true)
-
-        Column(modifier = Modifier.padding(paddingValues)) {
-            OfflineBanner(isOnline = isOnline)
-            ScrollableTabRow(
-                selectedTabIndex = selectedTabIndex,
-                edgePadding = 16.dp
+    AppScaffold(
+        title = "LIC Udaan · DO",
+        actions = {
+            IconButton(onClick = { adminViewModel.refreshData() }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh data", tint = Color.White)
+            }
+            IconButton(onClick = {
+                adminViewModel.logout()
+                restartAppAfterLogout(context)
+            }) {
+                Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = Color.White)
+            }
+        },
+        offlineBanner = { OfflineBanner(isOnline = isOnline) }
+    ) {
+        Column {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
+                itemsIndexed(tabs) { index, title ->
+                    PillChip(
+                        label = title,
                         selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
+                        onClick = { selectedTabIndex = index }
                     )
                 }
             }
-            // --- UPDATED: 'when' block to add UlipScreen ---
             when (selectedTabIndex) {
                 0 -> ProposalsTab(adminViewModel)
-                1 -> {
+                1 -> PremiumPdfImportScreen()
+                2 -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
                     val proposalsUiState = proposalsState as? AdminViewModel.ProposalsUiState
                     val ulipPolicies = proposalsUiState?.filteredPolicies?.filter { it.isUlip } ?: emptyList()
                     UlipScreen(policies = ulipPolicies)
                 }
-                2 -> {
-                AdminDateAnalysisTab(adminViewModel)
-            }
-            3 -> {
-                val currentUser by adminViewModel.currentAdminState.collectAsState()
-                FormsScreen(
-                    userRole = "admin",
-                    userEmail = currentUser?.email ?: "",
-                    userName = currentUser?.name ?: ""
-                )
-            }
-            4 -> {
-                val currentUser by adminViewModel.currentAdminState.collectAsState()
-                CircularsScreen(
-                    userRole = "admin",
-                    userEmail = currentUser?.email ?: "",
-                    userName = currentUser?.name ?: ""
-                )
-            }
-            5 -> PremiumSummaryTab(adminViewModel)
-            6 -> {
-                val proposalsState by adminViewModel.proposalsUiState.collectAsState()
-                val policies = (proposalsState as? AdminViewModel.ProposalsUiState)?.allPolicies ?: emptyList()
-                AgentPerformanceTab(policies = policies)
-            }
-            7 -> AdvisorManagementTab(adminViewModel)
-            8 -> LeadsTab(navController, adminViewModel)
-            9 -> AnalyticsTab(adminViewModel)
-            10 -> NonMedicalCheckerScreen()
-            11 -> GraphicsSelectionScreen(navController = navController)
+                3 -> AdminDateAnalysisTab(adminViewModel)
+                4 -> PremiumSummaryTab(adminViewModel)
+                5 -> {
+                    val proposalsState by adminViewModel.proposalsUiState.collectAsState()
+                    val policies = (proposalsState as? AdminViewModel.ProposalsUiState)?.allPolicies ?: emptyList()
+                    AgentPerformanceTab(policies = policies)
+                }
+                6 -> AdvisorManagementTab(adminViewModel)
+                7 -> LeadsTab(navController, adminViewModel)
+                8 -> AnalyticsTab(adminViewModel)
+                9 -> NonMedicalCheckerScreen()
+                10 -> {
+                    val currentUser by adminViewModel.currentAdminState.collectAsState()
+                    FormsScreen(
+                        userRole = "admin",
+                        userEmail = currentUser?.email ?: "",
+                        userName = currentUser?.name ?: ""
+                    )
+                }
+                11 -> {
+                    val currentUser by adminViewModel.currentAdminState.collectAsState()
+                    CircularsScreen(
+                        userRole = "admin",
+                        userEmail = currentUser?.email ?: "",
+                        userName = currentUser?.name ?: ""
+                    )
+                }
+                12 -> GraphicsSelectionScreen(navController = navController)
             }
         }
     }
@@ -180,46 +202,41 @@ fun LeadsTab(navController: NavController, adminViewModel: AdminViewModel) {
             }
 
             Column(modifier = Modifier.fillMaxSize()) {
-                OutlinedTextField(
+                AppSearchBar(
                     value = leadSearchQuery,
                     onValueChange = { adminViewModel.onLeadSearchQueryChanged(it) },
+                    placeholder = "Search by lead name or advisor code",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    label = { Text("Search by Lead Name or Advisor Code") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    singleLine = true,
-                    // --- ADDED: Keyboard actions ---
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                        .padding(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm)
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
                 ) {
-                    FilterChip(
+                    PillChip(
+                        label = "Active Leads",
                         selected = !showArchived,
-                        onClick = { showArchived = false },
-                        label = { Text("Active Leads") },
-                        leadingIcon = { Icon(Icons.Default.List, contentDescription = null) }
+                        onClick = { showArchived = false }
                     )
-                    FilterChip(
+                    PillChip(
+                        label = "Archived Leads",
                         selected = showArchived,
-                        onClick = { showArchived = true },
-                        label = { Text("Archived Leads") },
-                        leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) }
+                        onClick = { showArchived = true }
                     )
                 }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(start = Dimens.ScreenHPadding, end = Dimens.ScreenHPadding, bottom = Dimens.GutterLg),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
                 ) {
                     if (leadsToDisplay.isEmpty()) {
                         item {
-                            Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(if (showArchived) "No archived leads found." else "No active leads found.")
-                            }
+                            EmptyState(
+                                icon = if (showArchived) Icons.Default.Archive else Icons.Default.List,
+                                title = if (showArchived) "No archived leads found" else "No active leads found",
+                                message = "Leads matching the current filters will appear here."
+                            )
                         }
                     } else {
                         items(leadsToDisplay) { lead ->
@@ -310,30 +327,59 @@ fun LeadCard(
     onDownloadClick: () -> Unit,
     onArchiveActionClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onViewClick),
-        elevation = CardDefaults.cardElevation(2.dp)
+    SectionCard(
+        modifier = Modifier.clickable(onClick = onViewClick)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(lead.proposerDetails.name.ifEmpty { "New Lead" }, style = MaterialTheme.typography.titleLarge)
-            Text("From: $agentName ($agentCode)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        lead.proposerDetails.name.ifEmpty { "New Lead" },
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "From: $agentName (${agentCode.ifEmpty { "No code" }})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = if (isArchived) MaterialTheme.colorScheme.surfaceVariant else BrandSuccess.copy(alpha = 0.14f),
+                    contentColor = if (isArchived) MaterialTheme.colorScheme.onSurfaceVariant else BrandSuccess
+                ) {
+                    Text(
+                        if (isArchived) "Archived" else "Active",
+                        modifier = Modifier.padding(horizontal = Dimens.GutterSm, vertical = Dimens.GutterXs),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             val date = lead.lastUpdated?.let { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.US).format(it) } ?: "Not yet saved"
             Text("Last updated: $date", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = onViewClick) {
-                    Icon(Icons.Default.Visibility, contentDescription = "View", modifier = Modifier.size(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onViewClick) {
+                    Icon(Icons.Default.Visibility, contentDescription = "View")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(onClick = onDownloadClick) {
-                    Icon(Icons.Default.Download, contentDescription = "Download", modifier = Modifier.size(18.dp))
+                IconButton(onClick = onDownloadClick) {
+                    Icon(Icons.Default.Download, contentDescription = "Download")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(onClick = onArchiveActionClick) {
+                IconButton(onClick = onArchiveActionClick) {
                     if (isArchived) {
-                        Icon(Icons.Default.Unarchive, contentDescription = "Unarchive", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Unarchive, contentDescription = "Unarchive")
                     } else {
-                        Icon(Icons.Default.Archive, contentDescription = "Archive", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Archive, contentDescription = "Archive")
                     }
                 }
             }
@@ -397,6 +443,8 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
 
     val agentCodeToEmailMap = (agentState as? AdminViewModel.AgentListUiState.Success)
         ?.agents?.associate { it.agencyCode to it.email } ?: emptyMap()
+    val agentCodeToUserMap = (agentState as? AdminViewModel.AgentListUiState.Success)
+        ?.agents?.associateBy { it.agencyCode } ?: emptyMap()
 
     val policiesByAgent = remember(proposalsUiState?.filteredPolicies, proposalsUiState?.proposalSortOption, proposalsUiState?.proposalSortOrder) {
         if (proposalsUiState == null) return@remember emptyList()
@@ -439,43 +487,30 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(Dimens.ScreenHPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
         ) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { proposalFilePicker.launch("text/plain") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.UploadFile, contentDescription = "Upload")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Upload Proposals")
-                }
-                Button(
-                    onClick = { premiumFilePicker.launch("*/*") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.UploadFile, contentDescription = "Upload")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Upload Premium")
-                }
-            }
+            UploadButtonRow(
+                actions = listOf(
+                    UploadAction(label = "Upload Proposals", onClick = { proposalFilePicker.launch("text/plain") }),
+                    UploadAction(
+                        label = "Upload Premium",
+                        onClick = { premiumFilePicker.launch("*/*") },
+                        containerColor = BrandGold,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
+                    )
+                )
+            )
         }
 
-        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = Dimens.GutterSm)) }
 
         item {
-            OutlinedTextField(
+            AppSearchBar(
                 value = proposalsState.searchQuery,
                 onValueChange = { adminViewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Search by Name, Policy No or Plan") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                singleLine = true,
-                // --- ADDED: Keyboard actions ---
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                placeholder = "Search by name / policy / plan"
             )
         }
 
@@ -492,7 +527,8 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Show Only Late Policies (>30 days overdue)",
+                        text = "Show only late policies (>30 days overdue)",
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.clickable { adminViewModel.onLateFilterToggled(!proposalsUiState.showOnlyLate) }
                     )
                 }
@@ -520,15 +556,11 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
             }
 
             item {
-                Text("Filter by Date:", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                OutlinedButton(
+                OutlinedDateButton(
+                    label = formatDateRange(proposalsState.startDate, proposalsState.endDate),
                     onClick = { showDatePicker.value = true },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.DateRange, contentDescription = "Select Date Range")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = formatDateRange(proposalsState.startDate, proposalsState.endDate))
-                }
+                )
             }
 
             item {
@@ -552,11 +584,11 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
 
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceAround
+                    modifier = Modifier.fillMaxWidth().padding(top = Dimens.GutterXs),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
                 ) {
-                    StatCard("Total Proposals", proposalsState.filteredPolicies.size.toString())
-                    StatCard("ANANDA Count", proposalsState.filteredPolicies.count { it.isAnanda }.toString())
+                    StatTile("Total Proposals", proposalsState.filteredPolicies.size.toString(), modifier = Modifier.weight(1f))
+                    StatTile("ANANDA", proposalsState.filteredPolicies.count { it.isAnanda }.toString(), modifier = Modifier.weight(1f), accent = BrandGold)
                 }
             }
 
@@ -589,9 +621,11 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
 
         if (policiesByAgent.isEmpty() && proposalsUiState?.isLoading == false) {
             item {
-                Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No policies found for the selected filters.")
-                }
+                EmptyState(
+                    icon = Icons.Filled.Inbox,
+                    title = "No proposals found",
+                    message = "Try adjusting the search or filters."
+                )
             }
         } else {
             policiesByAgent.forEach { (agentIdentifier, policies) ->
@@ -599,36 +633,47 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
                 val isExpanded = agentCode in expandedAgentCodes
 
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                expandedAgentCodes = if (isExpanded) {
-                                    expandedAgentCodes - agentCode
-                                } else {
-                                    expandedAgentCodes + agentCode
-                                }
+                    val title = agentName.ifEmpty { agentCodeToEmailMap[agentCode] ?: "Unknown Advisor" }
+                    val advisor = agentCodeToUserMap[agentCode]
+                    ExpandableGroupCard(
+                        title = title,
+                        subtitle = "$agentCode · ${policies.size} policies",
+                        isExpanded = isExpanded,
+                        onToggle = {
+                            expandedAgentCodes = if (isExpanded) {
+                                expandedAgentCodes - agentCode
+                            } else {
+                                expandedAgentCodes + agentCode
                             }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        }
                     ) {
-                        val policyCount = policies.size
-                        val headerText = "${agentName.ifEmpty { agentCodeToEmailMap[agentCode] ?: "Unknown Advisor" }} ($agentCode) - $policyCount Policies"
-                        Text(
-                            text = headerText,
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (isExpanded) "Collapse" else "Expand"
-                        )
-                    }
-                }
-
-                if (isExpanded) {
-                    items(policies) { policy ->
-                        DetailedPolicyCard(policy = policy)
+                        Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
+                            FilledTonalButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        AdvisorPolicyPdfSharer.share(
+                                            context = context,
+                                            advisor = advisor,
+                                            advisorName = title,
+                                            advisorCode = agentCode,
+                                            policies = policies
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(Dimens.GutterXs))
+                                Text("Share PDF")
+                            }
+                            policies.forEach { policy ->
+                                DetailedPolicyCard(policy = policy)
+                            }
+                        }
                     }
                 }
             }
@@ -671,11 +716,7 @@ fun PremiumSummaryTab(adminViewModel: AdminViewModel) {
     }
 
     val summariesToShow = remember(summaryState.summariesByMonth, summaryState.selectedMonth, summaryState.summarySortOption, summaryState.summarySortOrder) {
-        val allSummaries = if (summaryState.selectedMonth == "All") {
-            summaryState.summariesByMonth.values.flatten()
-        } else {
-            summaryState.summariesByMonth[summaryState.selectedMonth] ?: emptyList()
-        }
+        val allSummaries = summaryState.summariesByMonth[summaryState.selectedMonth] ?: emptyList()
 
         when (summaryState.summarySortOption) {
             AdminViewModel.SummarySortOption.CODE -> {
@@ -757,29 +798,54 @@ fun PremiumSummaryTab(adminViewModel: AdminViewModel) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(bottom = 80.dp)
+                            contentPadding = PaddingValues(bottom = 120.dp)
                         ) {
                             items(summariesToShow) { summary ->
                                 PremiumSummaryCard(summary = summary)
                             }
                         }
-                        Column(
-                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        Surface(
+                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 3.dp,
+                            shadowElevation = 3.dp
                         ) {
-                            HorizontalDivider()
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Monthly Total:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("₹${String.format("%.2f", summaryState.monthlyTotalPremium)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Period Total:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("₹${String.format("%.2f", summaryState.appraisalYearTotalPremium)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)) {
+                                HorizontalDivider()
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Monthly Total",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "₹${String.format("%.2f", summaryState.monthlyTotalPremium)}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Period Total",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "₹${String.format("%.2f", summaryState.appraisalYearTotalPremium)}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
@@ -796,8 +862,8 @@ fun AdvisorManagementTab(adminViewModel: AdminViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(Dimens.ScreenHPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GutterLg)
     ) {
         item {
             adminState?.let { admin ->
@@ -830,47 +896,65 @@ fun AdvisorManagementTab(adminViewModel: AdminViewModel) {
 fun AnalyticsTab(adminViewModel: AdminViewModel) {
     val analyticsState by adminViewModel.analyticsUiState.collectAsState()
     Box(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(Dimens.ScreenHPadding),
         contentAlignment = Alignment.TopCenter
     ) {
         when (val state = analyticsState) {
             is AdminViewModel.AnalyticsUiState.Loading -> CircularProgressIndicator()
             is AdminViewModel.AnalyticsUiState.Success -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.GutterLg)) {
                     item {
-                        Text("Policy Count by Plan", style = MaterialTheme.typography.titleLarge)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth()) {
-                            Text("Plan Name", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                            Text("Count", fontWeight = FontWeight.Bold)
+                        SectionCard(title = "Policy Count by Plan") {
+                            state.planCounts.forEach { planCount ->
+                                MetricRow(
+                                    label = planCount.planName,
+                                    value = planCount.count.toString()
+                                )
+                            }
                         }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
-                    items(state.planCounts) { planCount ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                            Text(planCount.planName, Modifier.weight(1f))
-                            Text(planCount.count.toString())
-                        }
-                        HorizontalDivider()
                     }
                     item {
-                        Text("Policy Count by Financial Advisor", style = MaterialTheme.typography.titleLarge)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth()) {
-                            Text("Advisor Email", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                            Text("Policy Count", fontWeight = FontWeight.Bold)
+                        SectionCard(title = "Policy Count by Financial Advisor") {
+                            state.agentPerformance.forEach { agentData ->
+                                MetricRow(
+                                    label = agentData.agentEmail,
+                                    value = agentData.policyCount.toString()
+                                )
+                            }
                         }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
-                    items(state.agentPerformance) { agentData ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                            Text(agentData.agentEmail, Modifier.weight(1f))
-                            Text(agentData.policyCount.toString())
-                        }
-                        HorizontalDivider()
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MetricRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Dimens.GutterXs),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.GutterMd),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Surface(
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ) {
+            Text(
+                text = value,
+                modifier = Modifier.padding(horizontal = Dimens.GutterSm, vertical = Dimens.GutterXs),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -882,22 +966,32 @@ fun AgentList(
     onDeleteClick: (String) -> Unit,
     onSaveClick: (String, Long) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Pending Advisor Registrations", style = MaterialTheme.typography.titleLarge)
-        if (agents.none { !it.isApproved }) {
-            Text("No pending advisor registrations.")
-        } else {
-            agents.filter { !it.isApproved }.forEach { agent ->
-                AgentCard(user = agent, onApproveClick = onApproveClick, onDeleteClick = {}, onSaveClick = { _, _ -> })
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterLg)) {
+        SectionCard(title = "Pending Advisor Registrations") {
+            if (agents.none { !it.isApproved }) {
+                EmptyState(
+                    icon = Icons.Default.PersonAdd,
+                    title = "No pending advisors",
+                    message = "New advisor registrations will appear here."
+                )
+            } else {
+                agents.filter { !it.isApproved }.forEach { agent ->
+                    AgentCard(user = agent, onApproveClick = onApproveClick, onDeleteClick = {}, onSaveClick = { _, _ -> })
+                }
             }
         }
 
-        Text("Registered Financial Advisors", style = MaterialTheme.typography.titleLarge)
-        if (agents.none { it.isApproved }) {
-            Text("No registered advisors found.")
-        } else {
-            agents.filter { it.isApproved }.forEach { agent ->
-                AgentCard(user = agent, onApproveClick = {}, onDeleteClick = onDeleteClick, onSaveClick = onSaveClick)
+        SectionCard(title = "Registered Financial Advisors") {
+            if (agents.none { it.isApproved }) {
+                EmptyState(
+                    icon = Icons.Default.Groups,
+                    title = "No registered advisors",
+                    message = "Approved advisors will be listed here."
+                )
+            } else {
+                agents.filter { it.isApproved }.forEach { agent ->
+                    AgentCard(user = agent, onApproveClick = {}, onDeleteClick = onDeleteClick, onSaveClick = onSaveClick)
+                }
             }
         }
     }
@@ -910,11 +1004,9 @@ fun AdminProfileCard(admin: User, onSaveClick: (String, Long) -> Unit) {
     var selectedStartDate by remember { mutableStateOf(admin.startDate) }
     val hasChanges = selectedStartDate != admin.startDate
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("My Profile", style = MaterialTheme.typography.titleLarge)
-            Text("DO Code: ${admin.doCode}")
-            Spacer(modifier = Modifier.height(8.dp))
+    SectionCard(title = "My Profile") {
+        Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
+            Text("DO Code: ${admin.doCode}", style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(onClick = { showDatePicker = true }) {
                 val dateText = selectedStartDate?.let {
                     SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(Date(it))
@@ -962,15 +1054,15 @@ fun AgentCard(
     var selectedStartDate by remember { mutableStateOf(user.startDate) }
     val hasChanges = selectedStartDate != user.startDate
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    SectionCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = user.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(text = user.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Text(text = user.email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (!user.isApproved) {
@@ -983,9 +1075,12 @@ fun AgentCard(
             }
 
             if (user.isApproved) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("Advisor's Code: ${user.agencyCode.ifEmpty { "Not set" }}")
-                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider()
+                Text(
+                    "Advisor's Code: ${user.agencyCode.ifEmpty { "Not set" }}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 OutlinedButton(onClick = { showDatePicker = true }) {
                     val dateText = selectedStartDate?.let {
                         SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(Date(it))
@@ -993,7 +1088,6 @@ fun AgentCard(
                     Text(dateText)
                 }
                 if (hasChanges) {
-                    Spacer(modifier = Modifier.height(8.dp))
                     Button(
                         onClick = { selectedStartDate?.let { onSaveClick(user.uid, it) } },
                         modifier = Modifier.align(Alignment.End)
@@ -1593,8 +1687,8 @@ fun AgentComparisonCard(
                 agentComparisons.forEach { (name, stats1, stats2) ->
                     val diff = stats1.policyCount - stats2.policyCount
                     val diffColor = when {
-                        diff > 0 -> Color(0xFF4CAF50)
-                        diff < 0 -> Color(0xFFF44336)
+                        diff > 0 -> BrandSuccess
+                        diff < 0 -> BrandDanger
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
 
@@ -1621,8 +1715,8 @@ fun AgentComparisonCard(
                 // Total comparison row
                 val totalDiff = totalStats1.policyCount - totalStats2.policyCount
                 val totalDiffColor = when {
-                    totalDiff > 0 -> Color(0xFF4CAF50)
-                    totalDiff < 0 -> Color(0xFFF44336)
+                    totalDiff > 0 -> BrandSuccess
+                    totalDiff < 0 -> BrandDanger
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
 
@@ -1725,8 +1819,8 @@ fun AgentPeriodComparisonCard(
                 // Total row first
                 val totalPolicyDiff = totalStats1.policyCount - totalStats2.policyCount
                 val totalDiffColor = when {
-                    totalPolicyDiff > 0 -> Color(0xFF4CAF50)
-                    totalPolicyDiff < 0 -> Color(0xFFF44336)
+                    totalPolicyDiff > 0 -> BrandSuccess
+                    totalPolicyDiff < 0 -> BrandDanger
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -1761,8 +1855,8 @@ fun AgentPeriodComparisonCard(
                 agentComparisons.forEach { (agentName, stats1, stats2) ->
                     val policyDiff = stats1.policyCount - stats2.policyCount
                     val policyDiffColor = when {
-                        policyDiff > 0 -> Color(0xFF4CAF50)
-                        policyDiff < 0 -> Color(0xFFF44336)
+                        policyDiff > 0 -> BrandSuccess
+                        policyDiff < 0 -> BrandDanger
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {

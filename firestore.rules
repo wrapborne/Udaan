@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check the role of the currently logged-in user.
+    function isUserRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdminLike() {
+      return currentUser().role in [
+        'admin',
+        'Admin',
+        'do',
+        'DO',
+        'development officer',
+        'Development Officer',
+        'development_officer',
+        'development officer (do)',
+        'Development Officer (DO)'
+      ];
+    }
+
+    function isOwnerAdvisor(agentCode) {
+      return isUserRole('advisor') && agentCode == currentUser().agencyCode;
+    }
+
+    function isOwnerAdmin(adminId) {
+      return isAdminLike() && adminId == request.auth.uid;
+    }
+
+    function canReadAdvisorScoped(agentCode, adminId) {
+      return isUserRole('superadmin') ||
+             isAdminLike() ||
+             isOwnerAdvisor(agentCode);
+    }
+
+    function canWriteAdvisorScoped(agentCode, adminId) {
+      return isUserRole('superadmin') ||
+             isAdminLike() ||
+             (isOwnerAdvisor(agentCode) && adminId == currentUser().adminId);
+    }
+
+    function policyImportUpdateFields() {
+      return [
+        'policyStatus',
+        'lastDueImportId',
+        'lastDueImportAt',
+        'lastPaidDueDate',
+        'lastPaymentAdjustmentDate',
+        'lastPaymentImportId',
+        'lastPaymentImportAt',
+        'lastPremiumPaidDate',
+        'lastReversalDueDate',
+        'lastReversalImportId',
+        'lastReversalImportAt'
+      ];
+    }
+
+    // ---------------------------------------------------------------------
+    // forms
+    // ---------------------------------------------------------------------
+    match /forms/{formId} {
+      allow read: if request.auth != null;
+      allow write: if isUserRole('superadmin');
+    }
+
+    // ---------------------------------------------------------------------
+    // circulars
+    // ---------------------------------------------------------------------
+    match /circulars/{circularId} {
+      allow read, write: if isAdminLike() || isUserRole('superadmin');
+    }
+
+    // ---------------------------------------------------------------------
+    // users
+    // ---------------------------------------------------------------------
+    match /users/{userId} {
+      allow create: if request.auth.uid == userId;
+      allow get: if request.auth.uid == userId || isUserRole('superadmin');
+      allow list: if isAdminLike() || isUserRole('superadmin');
+      allow update, delete: if request.auth.uid == userId ||
+                              isUserRole('superadmin') ||
+                              (isAdminLike() &&
+                               get(/databases/$(database)/documents/users/$(userId)).data.adminId == request.auth.uid);
+    }
+
+    // ---------------------------------------------------------------------
+    // policies
+    // ---------------------------------------------------------------------
+    match /policies/{policyId} {
+      allow get: if isUserRole('superadmin') ||
+                   (isAdminLike() && resource.data.adminId == request.auth.uid) ||
+                   (isUserRole('advisor') &&
+                    resource.data.agentCode == currentUser().agencyCode);
+      allow list: if isUserRole('superadmin') || isAdminLike() || isUserRole('advisor');
+      allow write: if isUserRole('superadmin') || isAdminLike();
+      allow update: if isOwnerAdvisor(resource.data.agentCode) &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(policyImportUpdateFields());
+    }
+
+    // ---------------------------------------------------------------------
+    // ulip_policies
+    // ---------------------------------------------------------------------
+    match /ulip_policies/{policyId} {
+      allow get: if (isAdminLike() && resource.data.adminId == request.auth.uid) ||
+                   (isUserRole('advisor') &&
+                    resource.data.agentCode == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyCode);
+      allow list: if isAdminLike() || isUserRole('advisor');
+      allow write: if isAdminLike();
+    }
+
+    // ---------------------------------------------------------------------
+    // datasheets
+    // ---------------------------------------------------------------------
+    match /datasheets/{sheetId} {
+      allow read: if request.auth.uid == resource.data.createdByAdvisorId ||
+                     (isAdminLike() && request.auth.uid == resource.data.adminId);
+      allow create: if isUserRole('advisor') &&
+                       request.resource.data.createdByAdvisorId == request.auth.uid;
+      allow update: if request.auth.uid == resource.data.createdByAdvisorId ||
+                       (isAdminLike() && request.auth.uid == resource.data.adminId);
+      allow delete: if request.auth.uid == resource.data.createdByAdvisorId;
+    }
+
+    // ---------------------------------------------------------------------
+    // premium_summaries
+    // ---------------------------------------------------------------------
+    match /premium_summaries/{summaryId} {
+      allow get: if isAdminLike() && request.auth.uid == resource.data.adminId;
+      allow list: if isAdminLike();
+      allow create: if isAdminLike() && request.resource.data.adminId == request.auth.uid;
+      allow update, delete: if isAdminLike() && resource.data.adminId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------------
+    // premium_due_items
+    // ---------------------------------------------------------------------
+    match /premium_due_items/{dueItemId} {
+      allow get, list: if canReadAdvisorScoped(resource.data.agentCode, resource.data.adminId);
+      allow create: if canWriteAdvisorScoped(request.resource.data.agentCode, request.resource.data.adminId);
+      allow update: if isUserRole('superadmin') ||
+                      isAdminLike() ||
+                      (isOwnerAdvisor(resource.data.agentCode) &&
+                       request.resource.data.agentCode == resource.data.agentCode &&
+                       request.resource.data.adminId == resource.data.adminId);
+      allow delete: if canWriteAdvisorScoped(resource.data.agentCode, resource.data.adminId);
+    }
+
+    // ---------------------------------------------------------------------
+    // premium_payment_history
+    // ---------------------------------------------------------------------
+    match /premium_payment_history/{paymentId} {
+      allow get, list: if canReadAdvisorScoped(resource.data.agentCode, resource.data.adminId);
+      allow create: if canWriteAdvisorScoped(request.resource.data.agentCode, request.resource.data.adminId);
+      allow update: if isUserRole('superadmin') ||
+                      isAdminLike() ||
+                      (isOwnerAdvisor(resource.data.agentCode) &&
+                       request.resource.data.agentCode == resource.data.agentCode &&
+                       request.resource.data.adminId == resource.data.adminId);
+      allow delete: if isUserRole('superadmin') || isOwnerAdmin(resource.data.adminId);
+    }
+
+    // ---------------------------------------------------------------------
+    // app_config
+    // ---------------------------------------------------------------------
+    match /app_config/{configId} {
+      allow read: if request.auth != null;
+      allow write: if isUserRole('superadmin');
+    }
+
+    // ---------------------------------------------------------------------
+    // Graphics
+    // ---------------------------------------------------------------------
+    match /graphic_templates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if isUserRole('superadmin');
+    }
+
+    match /graphic_footers/{footerId} {
+      allow read: if request.auth != null;
+      allow write: if isUserRole('superadmin');
+    }
+  }
+}

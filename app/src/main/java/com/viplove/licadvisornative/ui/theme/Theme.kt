@@ -1,59 +1,65 @@
-// File: app/src/main/java/com/viplove/licadvisornative/ui/theme/Theme.kt
 package com.viplove.licadvisornative.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import androidx.compose.material3.lightColorScheme
 
-
-// Light color scheme
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryColor,
+    primary = BrandNavy,
     onPrimary = Color.White,
-
+    primaryContainer = BrandNavyContainer,
+    onPrimaryContainer = BrandNavy,
+    secondary = BrandGold,
+    onSecondary = Color(0xFF3B2A00),
+    secondaryContainer = BrandGoldSoft,
+    onSecondaryContainer = Color(0xFF6B4F00),
+    tertiary = BrandGold,
+    onTertiary = Color(0xFF3B2A00),
     background = LightBackground,
     onBackground = TextPrimary,
-
     surface = CardBackground,
     onSurface = TextPrimary,
-
-    secondary = SecondaryColor,
-    onSecondary = Color.White,
-
-    tertiary = TextSecondary,
-    onTertiary = TextPrimary,
-
-    error = Color(0xFFD32F2F),
-    onError = Color.White
+    surfaceVariant = LightBackground,
+    onSurfaceVariant = TextSecondary,
+    outline = TextSecondary,
+    outlineVariant = DividerSubtle,
+    error = BrandDanger,
+    onError = Color.White,
+    errorContainer = BrandDangerBg,
+    onErrorContainer = BrandDanger
 )
 
-// Dark color scheme
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkPrimary,
-    onPrimary = Color.Black,
-
+    primary = BrandNavyContainer,
+    onPrimary = BrandNavyDeep,
+    primaryContainer = BrandNavy,
+    onPrimaryContainer = Color.White,
+    secondary = BrandGold,
+    onSecondary = Color(0xFF3B2A00),
+    secondaryContainer = Color(0xFF6B4F00),
+    onSecondaryContainer = BrandGoldSoft,
+    tertiary = BrandGold,
+    onTertiary = Color(0xFF3B2A00),
     background = DarkBackground,
     onBackground = DarkOnBackground,
-
     surface = DarkSurface,
     onSurface = DarkOnSurface,
-
-    secondary = DarkSecondary,
-    onSecondary = Color.Black,
-
-    tertiary = DarkTextSecondary,
-    onTertiary = DarkOnSurface,
-
-    error = Color(0xFFCF6679),
-    onError = Color.Black
+    surfaceVariant = Color(0xFF1B2438),
+    onSurfaceVariant = DarkTextSecondary,
+    outline = DarkTextSecondary,
+    outlineVariant = DarkDivider,
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6)
 )
 
 @Composable
@@ -66,14 +72,15 @@ fun LICAdvisorNativeTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            window.statusBarColor = BrandNavy.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content
     )
 }

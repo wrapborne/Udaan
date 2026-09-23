@@ -1,4 +1,3 @@
-// File: app/src/main/java/com/viplove/licadvisornative/ui/screens/GraphicsEditorScreen.kt
 package com.viplove.licadvisornative.ui.screens
 
 import android.net.Uri
@@ -7,26 +6,57 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.viplove.licadvisornative.R
+import com.viplove.licadvisornative.ui.components.PillChip
+import com.viplove.licadvisornative.ui.components.SectionCard
+import com.viplove.licadvisornative.ui.theme.BrandGold
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.viewmodel.GraphicsEditorViewModel
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -63,113 +93,169 @@ fun GraphicsEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Customize Graphic") },
+                title = { Text("Customize graphic", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Implement download logic */ }) {
+            FloatingActionButton(onClick = { /* TODO: Wire existing download graphic action when available */ }) {
                 Icon(Icons.Default.Download, contentDescription = "Download Graphic")
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(Dimens.ScreenHPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
         ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator()
-            } else if (uiState.user == null) {
-                Text("Could not load user data. Please try again.")
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                ) {
-                    // Layer 1: Main Background Image
-                    Image(
-                        painter = rememberAsyncImagePainter(model = decodedMainUrl),
-                        contentDescription = "Graphic Template",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    // Layer 2: Footer Image
-                    Image(
-                        painter = rememberAsyncImagePainter(model = decodedFooterUrl),
-                        contentDescription = "Footer Graphic",
-                        modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
-                        contentScale = ContentScale.FillWidth
-                    )
-
-                    // Layer 3: User Details
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 20.dp) // Adjust padding to fit footer
+            when {
+                uiState.isLoading -> {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                uiState.user == null -> {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Text("Could not load user data. Please try again.")
+                    }
+                }
+                else -> {
+                    SectionCard {
+                        GraphicPreview(
+                            mainImageUrl = decodedMainUrl,
+                            footerImageUrl = decodedFooterUrl,
+                            name = uiState.user?.name.takeIf { !it.isNullOrEmpty() } ?: "Your Name",
+                            role = when (uiState.user?.role) {
+                                "admin" -> "Development Officer"
+                                "advisor" -> "Financial Advisor"
+                                else -> "LIC Professional"
+                            },
+                            phone = uiState.user?.phone.takeIf { !it.isNullOrEmpty() } ?: "+91 12345 67890",
+                            profilePicUrl = uiState.user?.profilePictureUrl
+                        )
+                    }
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val profilePicUrl = uiState.user?.profilePictureUrl
-                            Box(
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White)
-                                    .padding(4.dp)
-                            ) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(
-                                        model = profilePicUrl.takeIf { !it.isNullOrEmpty() } ?: R.mipmap.logo_foreground // A fallback image
-                                    ),
-                                    contentDescription = "Profile Picture",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column {
-                                val titleText = when (uiState.user?.role) {
-                                    "admin" -> "Development Officer"
-                                    "advisor" -> "Financial Advisor"
-                                    else -> "LIC Professional"
-                                }
-
-                                Text(
-                                    text = uiState.user?.name.takeIf { !it.isNullOrEmpty() } ?: "Your Name",
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-
-                                Text(
-                                    text = titleText,
-                                    fontSize = 16.sp,
-                                    color = Color.DarkGray
-                                )
-
-                                Text(
-                                    text = uiState.user?.phone.takeIf { !it.isNullOrEmpty() } ?: "+91 12345 67890",
-                                    fontSize = 16.sp,
-                                    color = Color.DarkGray
-                                )
-                            }
+                        item {
+                            PillChip(
+                                label = "Profile pic",
+                                selected = false,
+                                leadingIcon = Icons.Filled.Person,
+                                onClick = { profileImagePickerLauncher.launch("image/*") }
+                            )
+                        }
+                        item {
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                leadingIcon = { Icon(Icons.Filled.TextFields, contentDescription = "Text") },
+                                label = { Text("Text") }
+                            )
+                        }
+                        item {
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                leadingIcon = { Icon(Icons.Filled.Palette, contentDescription = "Color") },
+                                label = { Text("Color") }
+                            )
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GraphicPreview(
+    mainImageUrl: String,
+    footerImageUrl: String,
+    name: String,
+    role: String,
+    phone: String,
+    profilePicUrl: String?
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(MaterialTheme.shapes.medium)
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(model = mainImageUrl),
+            contentDescription = "Graphic template",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Image(
+            painter = rememberAsyncImagePainter(model = footerImageUrl),
+            contentDescription = "Footer graphic",
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter),
+            contentScale = ContentScale.FillWidth
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(Dimens.GutterLg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(3.dp)
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        model = profilePicUrl.takeIf { !it.isNullOrEmpty() } ?: R.mipmap.logo_foreground
+                    ),
+                    contentDescription = "Profile picture",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Spacer(modifier = Modifier.width(Dimens.GutterMd))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = role,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = phone,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = BrandGold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

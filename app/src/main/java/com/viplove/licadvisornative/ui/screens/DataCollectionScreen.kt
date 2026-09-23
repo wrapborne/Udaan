@@ -6,6 +6,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,14 +17,39 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.viplove.licadvisornative.R
 import com.viplove.licadvisornative.model.*
+import com.viplove.licadvisornative.ui.components.BottomActionBar
+import com.viplove.licadvisornative.ui.components.StepHeader
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.viewmodel.DataCollectionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val stepSubtitleMap = mapOf(
+    "Initial Questions" to "Who & what",
+    "Plan Details" to "Plan & premium",
+    "Personal Details" to "Identity",
+    "Life Assured: Personal Details" to "Identity",
+    "Proposer: Personal Details" to "Identity",
+    "Life Assured (Spouse): Personal Details" to "Identity",
+    "Life Assured: Occupation Details" to "Work & income",
+    "Proposer: Occupation Details" to "Work & income",
+    "Life Assured (Spouse): Occupation Details" to "Work & income",
+    "Life Assured: Family & Health" to "Medical history",
+    "Proposer: Family & Health" to "Medical history",
+    "Life Assured (Spouse): Family & Health" to "Medical history",
+    "Life Assured: Nominee & Bank" to "Payouts",
+    "Proposer: Nominee & Bank" to "Payouts",
+    "Female Insured Info" to "Maternity",
+    "Life Assured (Child) Details" to "Minor details",
+    "Document Uploads" to "Documents",
+    "Review & Submit" to "Final check",
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,42 +72,61 @@ fun DataCollectionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stepTitle) },
+                title = { Text(stepTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (uiState.currentStepIndex > 0) dataViewModel.previousStep() else navController.popBackStack()
                     }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     if (uiState.isSaving) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     } else if (!uiState.isNewDraft) {
-                        Text("Draft Saved", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(end = 8.dp))
+                        Text("Saved", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(end = Dimens.GutterSm))
                     }
                 }
             )
         },
         bottomBar = {
-            BottomNavigationBar(
-                currentStep = uiState.currentStepIndex,
-                totalSteps = uiState.totalSteps,
-                onPrevious = { dataViewModel.previousStep() },
-                onNext = { dataViewModel.nextStep() },
-                onSubmit = {
-                    dataViewModel.submitDataSheet()
-                    navController.popBackStack()
-                }
+            val isLastStep = uiState.currentStepIndex == uiState.totalSteps
+            BottomActionBar(
+                onBack = {
+                    if (uiState.currentStepIndex > 0) dataViewModel.previousStep() else navController.popBackStack()
+                },
+                onPrimary = {
+                    if (isLastStep) {
+                        dataViewModel.submitDataSheet()
+                        navController.popBackStack()
+                    } else {
+                        dataViewModel.nextStep()
+                    }
+                },
+                primaryLabel = if (isLastStep) stringResource(R.string.submit_button) else stringResource(R.string.next_button),
+                isLastStep = isLastStep
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            DataCollectionWizard(
-                uiState = uiState,
-                onDataChange = { dataViewModel.onDataChange(it) },
-                viewModel = dataViewModel
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            StepHeader(
+                stepIndex = uiState.currentStepIndex,
+                totalSteps = uiState.totalSteps + 1,
+                title = stepTitle,
+                subtitle = stepSubtitleMap[uiState.currentStepTitle]
             )
+            Box(modifier = Modifier.weight(1f)) {
+                DataCollectionWizard(
+                    uiState = uiState,
+                    onDataChange = { dataViewModel.onDataChange(it) },
+                    viewModel = dataViewModel
+                )
+            }
         }
     }
 }

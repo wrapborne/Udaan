@@ -41,6 +41,7 @@ object TokenManager {
     }
 
     fun clearAll() {
+        FirebaseAuth.getInstance().signOut()
         prefs.edit().clear().apply()
     }
 

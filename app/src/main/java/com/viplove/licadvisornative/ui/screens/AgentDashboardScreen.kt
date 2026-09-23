@@ -3,6 +3,8 @@ package com.viplove.licadvisornative.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
@@ -28,6 +30,16 @@ import androidx.navigation.NavController
 import com.viplove.licadvisornative.R
 import com.viplove.licadvisornative.model.ClientDataSheet
 import com.viplove.licadvisornative.model.Policy // <-- Uses the main Policy model
+import com.viplove.licadvisornative.ui.components.AppScaffold
+import com.viplove.licadvisornative.ui.components.AppSearchBar
+import com.viplove.licadvisornative.ui.components.EmptyState
+import com.viplove.licadvisornative.ui.components.OutlinedDateButton
+import com.viplove.licadvisornative.ui.components.PillChip
+import com.viplove.licadvisornative.ui.components.StatTile
+import com.viplove.licadvisornative.ui.theme.BrandGold
+import com.viplove.licadvisornative.ui.theme.BrandDanger
+import com.viplove.licadvisornative.ui.theme.BrandSuccess
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.viewmodel.AgentViewModel
 import com.viplove.licadvisornative.util.LocaleManager
 import java.text.SimpleDateFormat
@@ -41,11 +53,12 @@ fun AgentDashboardScreen(
 ) {
     val tabs = listOf(
         stringResource(R.string.my_policies_tab),
+        "PDF Import",
         "ULIP",
         "Data Analysis",
-        stringResource(R.string.forms_tab),  // NEW: Forms tab at position 3
         stringResource(R.string.drafts_tab),
         stringResource(R.string.checker_tab),
+        stringResource(R.string.forms_tab),
         stringResource(R.string.graphics_tab)
     )
     var selectedTabIndex by remember { mutableStateOf(0) }
@@ -53,67 +66,78 @@ fun AgentDashboardScreen(
     val agentUiState = uiState as? AgentViewModel.AgentUiState
 
     var showProfileDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val isOnline by remember {
+        com.viplove.licadvisornative.util.NetworkMonitor.observeConnectivity(context)
+    }.collectAsState(initial = true)
+    val greetLine = agentUiState?.currentUser?.let { user ->
+        val firstName = user.name.trim().substringBefore(" ").ifBlank { "Advisor" }
+        "Hi $firstName · ${user.agencyCode}"
+    }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.agent_dashboard_title)) },
-                actions = {
-                    IconButton(onClick = { agentViewModel.refreshData() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh Data")
-                    }
-                    IconButton(onClick = { showProfileDialog = true }) {
-                        Icon(Icons.Filled.AccountCircle, contentDescription = "My Profile")
-                    }
-                    IconButton(onClick = {
-                        agentViewModel.logout()
-                        navController.navigate("login") { popUpTo(0) }
-                    }) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate("data_collection/new") }) {
-                Icon(Icons.Default.Add, contentDescription = "Add New Client")
+    AppScaffold(
+        title = stringResource(R.string.agent_dashboard_title),
+        greetLine = greetLine,
+        actions = {
+            IconButton(onClick = { agentViewModel.refreshData() }) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Refresh data", tint = Color.White)
             }
+            IconButton(onClick = { showProfileDialog = true }) {
+                Icon(Icons.Filled.AccountCircle, contentDescription = "My profile", tint = Color.White)
+            }
+            IconButton(onClick = {
+                agentViewModel.logout()
+                restartAppAfterLogout(context)
+            }) {
+                Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = Color.White)
+            }
+        },
+        offlineBanner = { OfflineBanner(isOnline = isOnline) },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { navController.navigate("data_collection/new") },
+                icon = {
+                    Icon(Icons.Default.Add, contentDescription = "Add new client")
+                },
+                text = { Text("New client") }
+            )
         }
-    ) { paddingValues ->
-        // Network monitoring
-        val context = LocalContext.current
-        val isOnline by remember {
-            com.viplove.licadvisornative.util.NetworkMonitor.observeConnectivity(context)
-        }.collectAsState(initial = true)
-
-        Column(modifier = Modifier.padding(paddingValues)) {
-            OfflineBanner(isOnline = isOnline)
-            ScrollableTabRow(
-                selectedTabIndex = selectedTabIndex,
-                edgePadding = 16.dp
+    ) {
+        Column {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
+                itemsIndexed(tabs) { index, title ->
+                    PillChip(
+                        label = title,
                         selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
+                        onClick = { selectedTabIndex = index }
                     )
                 }
             }
             when (selectedTabIndex) {
                 0 -> AgentPoliciesTab(agentViewModel, agentUiState)
 
-                1 -> {
+                1 -> PremiumPdfImportScreen()
+
+                2 -> {
                     // Filter the main list to get only ULIP policies
                     val ulipPolicies = agentUiState?.filteredPolicies?.filter { it.isUlip } ?: emptyList()
                     UlipScreen(policies = ulipPolicies)
                 }
 
-                2 -> if (agentUiState != null) {
+                3 -> if (agentUiState != null) {
                     AgentDateAnalysisTab(agentUiState)
                 }
 
-                3 -> {
+                4 -> if (agentUiState != null) {
+                    DraftsTab(navController, agentViewModel, agentUiState)
+                }
+
+                5 -> NonMedicalCheckerScreen()
+
+                6 -> {
                     val currentUser = agentUiState?.currentUser
                     FormsScreen(
                         userRole = "advisor",
@@ -122,11 +146,7 @@ fun AgentDashboardScreen(
                     )
                 }
 
-                4 -> if (agentUiState != null) {
-                    DraftsTab(navController, agentViewModel, agentUiState)
-                }
-                5 -> NonMedicalCheckerScreen()
-                6 -> GraphicsSelectionScreen(navController = navController)
+                7 -> GraphicsSelectionScreen(navController = navController)
             }
         }
     }
@@ -470,19 +490,14 @@ fun AgentPoliciesTab(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
         ) {
         item {
-            OutlinedTextField(
+            AppSearchBar(
                 value = uiState.searchQuery,
                 onValueChange = { agentViewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.search_by_name_policy_plan)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                // --- ADDED: Keyboard actions ---
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                placeholder = stringResource(R.string.search_by_name_policy_plan)
             )
         }
 
@@ -498,7 +513,8 @@ fun AgentPoliciesTab(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Show Only Late Policies (>30 days overdue)",
+                    text = "Show only late policies (>30 days overdue)",
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.clickable { agentViewModel.onLateFilterToggled(!uiState.showOnlyLate) }
                 )
             }
@@ -542,39 +558,39 @@ fun AgentPoliciesTab(
             }
         }
         item {
-            OutlinedButton(
+            OutlinedDateButton(
+                label = formatDateRange(uiState.startDate, uiState.endDate),
                 onClick = { showDatePicker.value = true },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = uiState.selectedFinancialYear == "None" && uiState.selectedAppraisalYear == "None"
-            ) {
-                Icon(Icons.Default.DateRange, contentDescription = "Select Date Range")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = formatDateRange(uiState.startDate, uiState.endDate))
-            }
+            )
         }
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceAround
+                    .padding(top = Dimens.GutterXs),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                StatCard(stringResource(R.string.total_policies_stat), uiState.filteredPolicies.size.toString())
-                StatCard(stringResource(R.string.ananda_count_stat), uiState.filteredPolicies.count { it.isAnanda }.toString())
+                StatTile(stringResource(R.string.total_policies_stat), uiState.filteredPolicies.size.toString(), modifier = Modifier.weight(1f))
+                StatTile(stringResource(R.string.ananda_count_stat), uiState.filteredPolicies.count { it.isAnanda }.toString(), modifier = Modifier.weight(1f), accent = BrandGold)
             }
         }
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
         if (uiState.filteredPolicies.isEmpty() && !uiState.isLoading) {
             item {
-                Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No policies found for the selected filters.")
-                }
+                EmptyState(
+                    icon = Icons.Filled.Inbox,
+                    title = "No policies found",
+                    message = "Try adjusting the search or filters."
+                )
             }
         } else {
             items(uiState.filteredPolicies) { policy ->
                 DetailedPolicyCard(policy = policy)
             }
         }
+        item { Spacer(modifier = Modifier.height(Dimens.FabBottomInset)) }
         }
     }
 
@@ -1061,8 +1077,8 @@ fun ComparisonRow(label: String, value1: Number, value2: Number, isRupees: Boole
         else -> "—"
     }
     val diffColor = when {
-        diff > 0 -> Color(0xFF4CAF50) // Green
-        diff < 0 -> Color(0xFFF44336) // Red
+        diff > 0 -> BrandSuccess
+        diff < 0 -> BrandDanger
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 

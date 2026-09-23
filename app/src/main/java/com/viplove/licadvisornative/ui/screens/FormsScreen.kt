@@ -2,38 +2,74 @@ package com.viplove.licadvisornative.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.viplove.licadvisornative.R
 import com.viplove.licadvisornative.model.DocumentCategories
 import com.viplove.licadvisornative.model.Form
-import com.viplove.licadvisornative.ui.viewmodel.FormsViewModel
+import com.viplove.licadvisornative.ui.components.AppSearchBar
+import com.viplove.licadvisornative.ui.components.EmptyState as AppEmptyState
+import com.viplove.licadvisornative.ui.components.PillChip
 import com.viplove.licadvisornative.ui.components.UploadFormDialog
-import kotlinx.coroutines.launch
+import com.viplove.licadvisornative.ui.theme.BrandDanger
+import com.viplove.licadvisornative.ui.theme.BrandDangerBg
+import com.viplove.licadvisornative.ui.theme.BrandNavyContainer
+import com.viplove.licadvisornative.ui.theme.ChartBlue
+import com.viplove.licadvisornative.ui.theme.Dimens
+import com.viplove.licadvisornative.ui.viewmodel.FormsViewModel
 import kotlinx.coroutines.MainScope
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.launch
 
-/**
- * Forms screen for viewing and downloading LIC forms
- * Super Admin can upload, all users can search and download
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormsScreen(
@@ -45,86 +81,83 @@ fun FormsScreen(
     val forms by viewModel.forms.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
-    
     var showUploadDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    
     val canUpload = userRole == "superadmin"
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.forms_tab)) },
+                title = { Text(stringResource(R.string.forms_tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                actions = {
+                    if (canUpload) {
+                        IconButton(onClick = { showUploadDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.CloudUpload,
+                                contentDescription = stringResource(R.string.upload_form),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.primary
                 )
             )
         },
-        floatingActionButton = {
-            if (canUpload) {
-                FloatingActionButton(
-                    onClick = { showUploadDialog = true }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.upload_form))
-                }
-            }
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .padding(horizontal = Dimens.ScreenHPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
         ) {
-            // Search Bar
-            SearchBar(
-                query = searchQuery,
-                onQueryChange = { viewModel.updateSearchQuery(it) },
+            AppSearchBar(
+                value = searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
                 placeholder = stringResource(R.string.search_forms)
             )
-            
-            // Category Filter
-            CategoryFilterRow(
+            CategoryPillsRow(
                 selectedCategory = selectedCategory,
                 categories = DocumentCategories.ALL_FORM_CATEGORIES,
-                onCategorySelected = { viewModel.updateCategoryFilter(it) },
-                onClearFilters = { viewModel.clearFilters() }
+                onCategorySelected = { viewModel.updateCategoryFilter(it) }
             )
-            
-            // Forms List
+            Text(
+                text = "${forms.size} forms",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Dimens.GutterXs)
+            )
             if (forms.isEmpty()) {
-                EmptyState(
+                AppEmptyState(
+                    icon = Icons.Filled.Description,
                     title = stringResource(R.string.empty_forms_title),
-                    message = stringResource(R.string.empty_forms_message)
+                    message = stringResource(R.string.empty_forms_message),
+                    modifier = Modifier.weight(1f)
                 )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(vertical = Dimens.GutterSm),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
                 ) {
                     items(forms) { form ->
                         FormCard(
                             form = form,
-                            onPreview = {
-                                // Preview form in browser/PDF viewer
-                                previewForm(context, form, viewModel)
-                            },
-                            onDownload = {
-                                // Download form
-                                downloadForm(context, form, viewModel)
-                            },
+                            onPreview = { previewForm(context, form, viewModel) },
+                            onDownload = { downloadForm(context, form, viewModel) },
                             canDelete = canUpload,
-                            onDelete = {
-                                viewModel.deleteForm(form.formId, form.fileExtension)
-                            }
+                            onDelete = { viewModel.deleteForm(form.formId, form.fileExtension) }
                         )
                     }
                 }
             }
         }
     }
-    
-    // Upload Dialog
+
     if (showUploadDialog) {
         UploadFormDialog(
             onDismiss = { showUploadDialog = false },
@@ -136,61 +169,30 @@ fun FormsScreen(
 }
 
 @Composable
-fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    placeholder: String
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        placeholder = { Text(placeholder) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear")
-                }
-            }
-        },
-        singleLine = true
-    )
-}
-
-@Composable
-fun CategoryFilterRow(
+private fun CategoryPillsRow(
     selectedCategory: String?,
     categories: List<String>,
-    onCategorySelected: (String?) -> Unit,
-    onClearFilters: () -> Unit
+    onCategorySelected: (String?) -> Unit
 ) {
     LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm),
+        contentPadding = PaddingValues(vertical = Dimens.GutterXs)
     ) {
         item {
-            FilterChip(
+            PillChip(
+                label = stringResource(R.string.all_categories),
                 selected = selectedCategory == null,
-                onClick = { onCategorySelected(null) },
-                label = { Text(stringResource(R.string.all_categories)) }
+                onClick = { onCategorySelected(null) }
             )
         }
-        
-        items(categories.size) { index ->
-            FilterChip(
-                selected = selectedCategory == categories[index],
-                onClick = { onCategorySelected(categories[index]) },
-                label = { Text(categories[index]) }
+        items(categories.distinct()) { category ->
+            PillChip(
+                label = category,
+                selected = selectedCategory == category,
+                onClick = { onCategorySelected(category) }
             )
         }
     }
-    
-    Spacer(modifier = Modifier.height(8.dp))
 }
 
 @Composable
@@ -202,102 +204,67 @@ fun FormCard(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onPreview),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(Dimens.GutterMd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
         ) {
-            // Title
-            Text(
-                text = form.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Category and Language
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(form.category, style = MaterialTheme.typography.bodySmall) }
+            DocumentTypeIcon(fileType = form.fileType.ifBlank { form.fileExtension })
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = form.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
-                
-                if (form.language.isNotBlank()) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { 
-                            Text(
-                                when(form.language) {
-                                    "hindi" -> stringResource(R.string.language_hindi_detected)
-                                    "english" -> stringResource(R.string.language_english_detected)
-                                    "both" -> stringResource(R.string.language_both)
-                                    else -> stringResource(R.string.language_unknown)
-                                },
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                Text(
+                    text = "${form.category} · ${formatDateTime(form.uploadedAt)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${languageLabel(form.language)} · ${formatFileSize(form.fileSizeBytes)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GutterXs)) {
+                IconButton(onClick = onPreview) {
+                    Icon(
+                        imageVector = Icons.Filled.Visibility,
+                        contentDescription = stringResource(R.string.preview),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Metadata
-            Text(
-                text = stringResource(R.string.uploaded_by, form.uploadedByName),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Text(
-                text = formatDateTime(form.uploadedAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Text(
-                text = stringResource(R.string.file_size, formatFileSize(form.fileSizeBytes)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                IconButton(onClick = onDownload) {
+                    Icon(
+                        imageVector = Icons.Filled.Download,
+                        contentDescription = stringResource(R.string.download),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
                 if (canDelete) {
-                    TextButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.delete_document))
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.delete_document),
+                            tint = BrandDanger
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                
-                OutlinedButton(onClick = onPreview) {
-                    Icon(Icons.Default.Visibility, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.preview))
-                }
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Button(onClick = onDownload) {
-                    Icon(Icons.Default.Download, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.download))
                 }
             }
         }
@@ -305,42 +272,53 @@ fun FormCard(
 }
 
 @Composable
-fun EmptyState(
-    title: String,
-    message: String
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+private fun DocumentTypeIcon(fileType: String) {
+    val normalized = fileType.lowercase()
+    val icon: ImageVector
+    val background: Color
+    val tint: Color
+    when {
+        normalized.contains("pdf") -> {
+            icon = Icons.Filled.PictureAsPdf
+            background = BrandDangerBg
+            tint = BrandDanger
+        }
+        normalized.contains("doc") -> {
+            icon = Icons.Filled.Description
+            background = BrandNavyContainer
+            tint = ChartBlue
+        }
+        else -> {
+            icon = Icons.Filled.InsertDriveFile
+            background = MaterialTheme.colorScheme.surfaceVariant
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(9.dp),
+        color = background,
+        contentColor = tint,
+        modifier = Modifier.size(42.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = Icons.Default.Description,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                imageVector = icon,
+                contentDescription = "Document type",
+                modifier = Modifier.size(22.dp)
             )
         }
     }
 }
 
-// Helper Functions
-
+@Composable
+private fun languageLabel(language: String): String {
+    return when (language) {
+        "hindi" -> stringResource(R.string.language_hindi_detected)
+        "english" -> stringResource(R.string.language_english_detected)
+        "both" -> stringResource(R.string.language_both)
+        else -> stringResource(R.string.language_unknown)
+    }
+}
 
 private fun formatFileSize(bytes: Long): String {
     return when {
@@ -355,8 +333,7 @@ private fun downloadForm(
     form: Form,
     viewModel: FormsViewModel
 ) {
-    // Launch download using device's download manager
-    kotlinx.coroutines.MainScope().launch {
+    MainScope().launch {
         val downloadUrl = viewModel.getDownloadUrl(form.formId)
         if (downloadUrl != null) {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
@@ -370,11 +347,9 @@ private fun previewForm(
     form: Form,
     viewModel: FormsViewModel
 ) {
-    // Preview form in browser/PDF viewer
-    kotlinx.coroutines.MainScope().launch {
+    MainScope().launch {
         val downloadUrl = viewModel.getDownloadUrl(form.formId)
         if (downloadUrl != null) {
-            // Use ACTION_VIEW with a chooser to let user select their preferred viewer
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(Uri.parse(downloadUrl), getMimeType(form.fileType))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -382,7 +357,6 @@ private fun previewForm(
             try {
                 context.startActivity(Intent.createChooser(intent, "Preview with..."))
             } catch (e: Exception) {
-                // Fallback to simple ACTION_VIEW
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
             }
         }
@@ -397,6 +371,3 @@ private fun getMimeType(fileType: String): String {
         else -> "*/*"
     }
 }
-
-// Upload Dialog is now imported from com.viplove.licadvisornative.ui.components.UploadFormDialog
-

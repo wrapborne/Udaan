@@ -74,9 +74,6 @@ class SuperadminViewModel : ViewModel() {
     }
 
     fun logout() {
-        viewModelScope.launch {
-            try { ApiClient.api.logout() } catch (_: Exception) {}
-            TokenManager.clearAll()
-        }
+        TokenManager.clearAll()
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,6 +42,10 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.viplove.licadvisornative.BuildConfig
 import com.viplove.licadvisornative.model.ClientDataSheet
+import com.viplove.licadvisornative.ui.components.SectionCard
+import com.viplove.licadvisornative.ui.theme.BrandDangerBg
+import com.viplove.licadvisornative.ui.theme.BrandNavyContainer
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.viewmodel.DocumentUploadViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -118,16 +123,17 @@ fun DocumentUploadStep(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(Dimens.ScreenHPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
     ) {
         item {
-            Text("Document Uploads", style = MaterialTheme.typography.headlineSmall)
-            Text(
-                "Upload the required documents.",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionCard(title = "Document slots") {
+                Text(
+                    "Upload the required documents. Camera and document scanner options are available per slot.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         items(uiState.documentSlots) { slot ->
@@ -158,14 +164,15 @@ fun DocumentUploadStep(
         }
 
         item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Virtual A4 Preview", style = MaterialTheme.typography.headlineSmall)
+            Text("Virtual A4 Preview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 400.dp),
-                elevation = CardDefaults.cardElevation(4.dp)
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 A4PreviewLayout(slots = uiState.documentSlots)
             }
@@ -260,50 +267,87 @@ fun DocumentSlotCard(
     onScanClick: () -> Unit,
     onPhotoClick: () -> Unit
 ) {
+    val uploadAction = if (slot.documentType == "photo") onPhotoClick else onScanClick
     Card(
         modifier = Modifier.fillMaxWidth(),
-        border = if (slot.isMandatory) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(
+            width = if (slot.uploadedUri == null) 1.5.dp else 0.5.dp,
+            color = if (slot.uploadedUri == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(slot.label, fontWeight = FontWeight.Bold)
-                if (slot.isMandatory) {
-                    Text("Mandatory", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                } else {
-                    Text("Optional", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            if (slot.uploadedUri != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        if (slot.uploadedUri != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(Dimens.GutterMd),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
+            ) {
+                Card(
+                    shape = MaterialTheme.shapes.small,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
                     Image(
                         painter = rememberAsyncImagePainter(model = Uri.parse(slot.uploadedUri)),
-                        contentDescription = "Preview",
-                        modifier = Modifier.size(48.dp),
+                        contentDescription = "${slot.label} preview",
+                        modifier = Modifier.size(56.dp),
                         contentScale = ContentScale.Crop
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = if (slot.documentType == "photo") onPhotoClick else onScanClick) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit/Retake")
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(slot.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = if (slot.isMandatory) "Mandatory · Uploaded" else "Optional · Uploaded",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = uploadAction) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Replace ${slot.label}",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(Dimens.GutterLg),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = if (slot.documentType == "photo") BrandDangerBg else BrandNavyContainer,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (slot.documentType == "photo") Icons.Default.AddAPhoto else Icons.Filled.DocumentScanner,
+                            contentDescription = slot.label,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
-            } else {
-                if (slot.documentType == "photo") {
-                    OutlinedButton(onClick = onPhotoClick) {
-                        Icon(Icons.Default.AddAPhoto, contentDescription = "Take Photo")
-                    }
-                } else {
-                    OutlinedButton(onClick = onScanClick) {
-                        Icon(Icons.Filled.DocumentScanner, contentDescription = "Scan Document")
-                    }
+                Text(slot.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(
+                    text = if (slot.isMandatory) "Mandatory · Tap to upload PDF / image" else "Optional · Tap to upload PDF / image",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                OutlinedButton(onClick = uploadAction, shape = MaterialTheme.shapes.small) {
+                    Icon(
+                        imageVector = if (slot.documentType == "photo") Icons.Default.AddAPhoto else Icons.Filled.DocumentScanner,
+                        contentDescription = if (slot.documentType == "photo") "Take photo" else "Scan document"
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.GutterSm))
+                    Text(if (slot.documentType == "photo") "Take photo" else "Scan document")
                 }
             }
         }

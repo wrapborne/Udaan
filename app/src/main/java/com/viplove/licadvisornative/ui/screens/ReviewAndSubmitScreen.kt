@@ -5,14 +5,16 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +25,9 @@ import com.viplove.licadvisornative.model.ClientDataSheet
 import com.viplove.licadvisornative.model.FamilyMember
 import com.viplove.licadvisornative.model.Nominee
 import com.viplove.licadvisornative.model.PersonDetails
+import com.viplove.licadvisornative.ui.components.SectionCard
+import com.viplove.licadvisornative.ui.theme.BrandGold
+import com.viplove.licadvisornative.ui.theme.Dimens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,113 +40,144 @@ fun DataSheetView(dataSheet: ClientDataSheet) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(Dimens.ScreenHPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
     ) {
         item {
-            Text(
-                "ANANDA - DATA SHEET (As Per 2.0)",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
-            InfoRow("NAME OF THE PROPOSER:", proposer.name)
-            InfoRow("Name Of Life Assured:", if (dataSheet.initialQuestions.proposerIsLA) proposer.name else lifeAssured.name)
-            val dob = proposer.dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)) } ?: ""
-            InfoRow("Date Of Birth:", dob)
-            InfoRow("Gender:", proposer.gender)
-            InfoRow("Contact No:", proposer.contactNo)
-            InfoRow("Email ID:", proposer.emailId)
-        }
-
-        item {
-            val planText = dataSheet.selectedPlan?.let { "${it.name} (${it.planNumber})" } ?: ""
-            val termText = dataSheet.selectedTerm?.let { "T: $it" } ?: ""
-            val pptText = dataSheet.selectedPpt?.let { "PPT: $it" } ?: ""
-            ThreeColumnRow(
-                col1 = "SUM ASSURED: ${dataSheet.sumAssured}",
-                col2 = "PLAN: $planText",
-                col3 = "MODE: ${dataSheet.mode}"
-            )
-            val doc = dataSheet.dateOfCommencement?.let { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)) } ?: ""
-            ThreeColumnRow(
-                col1 = "$termText / $pptText",
-                col2 = "",
-                col3 = "DATE OF COMMENCEMENT: $doc"
-            )
-        }
-
-        item {
-            InfoRow("ADHAR CARD NO:", proposer.adharCardNo)
-            InfoRow("FATHER NAME:", proposer.fatherName)
-            InfoRow("MOTHER NAME:", proposer.motherName)
-            InfoRow("MARITAL STATUS:", proposer.maritalStatus)
-            InfoRow("TAX ASSESSEE:", proposer.taxAssessee)
-            InfoRow("PAN CARD NO:", proposer.panCardNo)
-            InfoRow("PAN NAME:", proposer.panName)
-            InfoRow("ADDRESS (BOND DELIVERY):", "${proposer.communicationAddress.line1}, ${proposer.communicationAddress.city}")
-        }
-
-        if (proposer.gender == "Female" || lifeAssured.gender == "Female") {
-            item {
-                SectionTitle("FEMALE INSURED INFORMATION")
-                val female = if (proposer.gender == "Female") proposer else lifeAssured
-                InfoRow("ARE YOU PREGNANT NOW:", if (female.isPregnant) "Yes" else "No")
-                val lastDelivery = female.dateOfLastDelivery?.let { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)) } ?: ""
-                InfoRow("DATE OF LAST DELIVERY:", lastDelivery)
-                InfoRow("DETAILS OF MISCARRIAGE/CESAREAN:", female.miscarriageDetails)
+            SectionCard {
+                Text(
+                    "ANANDA - DATA SHEET",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "As Per 2.0",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
         item {
-            InfoRow("OCCUPATION:", proposer.occupation)
-            InfoRow("NATURE OF DUTIES:", proposer.natureOfDuties)
-            InfoRow("LENGTH OF SERVICE:", proposer.lengthOfService)
-            InfoRow("NAME OF EMPLOYER:", proposer.employerName)
-            InfoRow("ANNUAL INCOME:", proposer.annualIncome)
-            InfoRow("EDUCATION:", proposer.education)
+            ReviewSectionCard(title = "Client Details") {
+                InfoRow("NAME OF THE PROPOSER:", proposer.name)
+                InfoRow("Name Of Life Assured:", if (dataSheet.initialQuestions.proposerIsLA) proposer.name else lifeAssured.name)
+                val dob = proposer.dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)) } ?: ""
+                InfoRow("Date Of Birth:", dob)
+                InfoRow("Gender:", proposer.gender)
+                InfoRow("Contact No:", proposer.contactNo)
+                InfoRow("Email ID:", proposer.emailId)
+            }
         }
 
         item {
-            SectionTitle("FAMILY HISTORY")
-            FamilyHistoryTable(proposer.familyHistory)
+            ReviewSectionCard(title = "Plan Summary") {
+                val planText = dataSheet.selectedPlan?.let { "${it.name} (${it.planNumber})" } ?: ""
+                val termText = dataSheet.selectedTerm?.let { "T: $it" } ?: ""
+                val pptText = dataSheet.selectedPpt?.let { "PPT: $it" } ?: ""
+                ThreeColumnRow(
+                    col1 = "SUM ASSURED: ${dataSheet.sumAssured}",
+                    col2 = "PLAN: $planText",
+                    col3 = "MODE: ${dataSheet.mode}"
+                )
+                val doc = dataSheet.dateOfCommencement?.let { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)) } ?: ""
+                ThreeColumnRow(
+                    col1 = "$termText / $pptText",
+                    col2 = "",
+                    col3 = "DATE OF COMMENCEMENT: $doc"
+                )
+            }
         }
 
         item {
-            SectionTitle("BANK DETAILS")
-            BankDetailsTable(listOf(proposer.clientBankDetails))
+            ReviewSectionCard(title = "Identity & Address") {
+                InfoRow("ADHAR CARD NO:", proposer.adharCardNo)
+                InfoRow("FATHER NAME:", proposer.fatherName)
+                InfoRow("MOTHER NAME:", proposer.motherName)
+                InfoRow("MARITAL STATUS:", proposer.maritalStatus)
+                InfoRow("TAX ASSESSEE:", proposer.taxAssessee)
+                InfoRow("PAN CARD NO:", proposer.panCardNo)
+                InfoRow("PAN NAME:", proposer.panName)
+                InfoRow("ADDRESS (BOND DELIVERY):", "${proposer.communicationAddress.line1}, ${proposer.communicationAddress.city}")
+            }
+        }
+
+        if (proposer.gender == "Female" || lifeAssured.gender == "Female") {
+            item {
+                ReviewSectionCard(title = "Female Insured Information") {
+                    val female = if (proposer.gender == "Female") proposer else lifeAssured
+                    InfoRow("ARE YOU PREGNANT NOW:", if (female.isPregnant) "Yes" else "No")
+                    val lastDelivery = female.dateOfLastDelivery?.let { SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)) } ?: ""
+                    InfoRow("DATE OF LAST DELIVERY:", lastDelivery)
+                    InfoRow("DETAILS OF MISCARRIAGE/CESAREAN:", female.miscarriageDetails)
+                }
+            }
         }
 
         item {
-            ThreeColumnRow(
-                col1 = "HEIGHT (CM): ${proposer.heightCm}",
-                col2 = "WEIGHT (KG): ${proposer.weightKg}",
-                col3 = "STATE OF HEALTH: ${proposer.stateOfHealth}"
-            )
+            ReviewSectionCard(title = "Occupation Details") {
+                InfoRow("OCCUPATION:", proposer.occupation)
+                InfoRow("NATURE OF DUTIES:", proposer.natureOfDuties)
+                InfoRow("LENGTH OF SERVICE:", proposer.lengthOfService)
+                InfoRow("NAME OF EMPLOYER:", proposer.employerName)
+                InfoRow("ANNUAL INCOME:", proposer.annualIncome)
+                InfoRow("EDUCATION:", proposer.education)
+            }
         }
 
         item {
-            SectionTitle("NOMINEE DETAILS")
-            NomineeDetailsTable(proposer.nominees)
+            ReviewSectionCard(title = "Family History") {
+                FamilyHistoryTable(proposer.familyHistory)
+            }
+        }
+
+        item {
+            ReviewSectionCard(title = "Bank Details") {
+                BankDetailsTable(listOf(proposer.clientBankDetails))
+            }
+        }
+
+        item {
+            ReviewSectionCard(title = "Health Declaration") {
+                ThreeColumnRow(
+                    col1 = "HEIGHT (CM): ${proposer.heightCm}",
+                    col2 = "WEIGHT (KG): ${proposer.weightKg}",
+                    col3 = "STATE OF HEALTH: ${proposer.stateOfHealth}"
+                )
+            }
+        }
+
+        item {
+            ReviewSectionCard(title = "Nominee Details") {
+                NomineeDetailsTable(proposer.nominees)
+            }
         }
 
         if (dataSheet.isNachMandatory == "Yes") {
             item {
-                SectionTitle("NOMINEE BANK DETAILS (DIVISION CASE MANDATORY)")
-                BankDetailsTable(listOf(proposer.clientNachBankDetails))
+                ReviewSectionCard(title = "Nominee Bank Details") {
+                    Text(
+                        "Division case mandatory",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    BankDetailsTable(listOf(proposer.clientNachBankDetails))
+                }
             }
         }
 
         proposer.appointee?.let {
             if (it.name.isNotBlank()) {
                 item {
-                    SectionTitle("APPOINTEE DETAILS")
-                    AppointeeTable(it)
+                    ReviewSectionCard(title = "Appointee Details") {
+                        AppointeeTable(it)
+                    }
                 }
             }
         }
@@ -152,29 +188,37 @@ fun DataSheetView(dataSheet: ClientDataSheet) {
 fun SectionTitle(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        textAlign = TextAlign.Center
+            .padding(vertical = Dimens.GutterSm),
+        textAlign = TextAlign.Start
     )
 }
 
 @Composable
 fun InfoRow(label: String, value: String?) {
     if (!value.isNullOrBlank()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = Dimens.GutterXs),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
+        ) {
             Text(
                 text = label,
                 modifier = Modifier.weight(0.4f),
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = value,
                 modifier = Modifier.weight(0.6f),
-                fontSize = 12.sp
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -182,12 +226,17 @@ fun InfoRow(label: String, value: String?) {
 
 @Composable
 fun ThreeColumnRow(col1: String, col2: String, col3: String) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(col1, modifier = Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Text(col2, modifier = Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Text(col3, modifier = Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.small)
+            .padding(Dimens.GutterSm),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
+    ) {
+        Text(col1, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(col2, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(col3, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
     }
-    HorizontalDivider(color = Color.Black, thickness = 1.dp)
 }
 
 @Composable
@@ -202,15 +251,15 @@ fun FamilyHistoryTable(family: List<FamilyMember>) {
         Text(
             "Living Relatives",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = Dimens.GutterSm, bottom = Dimens.GutterXs)
         )
-        Column(modifier = Modifier.border(BorderStroke(1.dp, Color.Black))) {
+        TableSurface {
             // 3. Create a clean header specifically for living relatives.
             Row(Modifier.fillMaxWidth()) {
                 TableCell(text = "RELATION", weight = 0.5f, isHeader = true)
                 TableCell(text = "AGE", weight = 0.5f, isHeader = true)
             }
-            HorizontalDivider(color = Color.Black, thickness = 1.dp)
 
             // 4. Loop *only* through the living relatives that were entered.
             livingRelatives.forEach { member ->
@@ -218,7 +267,6 @@ fun FamilyHistoryTable(family: List<FamilyMember>) {
                     TableCell(text = member.relation.uppercase(), weight = 0.5f)
                     TableCell(text = member.age, weight = 0.5f)
                 }
-                HorizontalDivider(color = Color.Black, thickness = 1.dp)
             }
         }
     }
@@ -228,16 +276,16 @@ fun FamilyHistoryTable(family: List<FamilyMember>) {
         Text(
             "Deceased Relatives",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = Dimens.GutterLg, bottom = Dimens.GutterXs)
         )
-        Column(modifier = Modifier.border(BorderStroke(1.dp, Color.Black))) {
+        TableSurface {
             // 6. Create a different header for deceased relatives.
             Row(Modifier.fillMaxWidth()) {
                 TableCell(text = "RELATION", weight = 0.3f, isHeader = true)
                 TableCell(text = "AGE AT DEATH", weight = 0.3f, isHeader = true)
                 TableCell(text = "CAUSE OF DEATH", weight = 0.4f, isHeader = true)
             }
-            HorizontalDivider(color = Color.Black, thickness = 1.dp)
 
             // 7. Loop *only* through the deceased relatives.
             deceasedRelatives.forEach { member ->
@@ -246,7 +294,6 @@ fun FamilyHistoryTable(family: List<FamilyMember>) {
                     TableCell(text = member.ageAtDeath, weight = 0.3f)
                     TableCell(text = member.causeOfDeath, weight = 0.4f)
                 }
-                HorizontalDivider(color = Color.Black, thickness = 1.dp)
             }
         }
     }
@@ -254,14 +301,13 @@ fun FamilyHistoryTable(family: List<FamilyMember>) {
 
 @Composable
 fun BankDetailsTable(bankDetailsList: List<com.viplove.licadvisornative.model.BankDetails>) {
-    Column(modifier = Modifier.border(BorderStroke(1.dp, Color.Black))) {
+    TableSurface {
         Row(Modifier.fillMaxWidth()) {
             TableCell(text = "BANK NAME", weight = 0.25f, isHeader = true)
             TableCell(text = "IFSC CODE", weight = 0.25f, isHeader = true)
             TableCell(text = "ACCOUNT NO", weight = 0.25f, isHeader = true)
             TableCell(text = "ACCOUNT TYPE", weight = 0.25f, isHeader = true)
         }
-        HorizontalDivider(color = Color.Black, thickness = 1.dp)
         bankDetailsList.forEach {
             Row(Modifier.fillMaxWidth()) {
                 TableCell(text = it.bankName, weight = 0.25f)
@@ -269,14 +315,13 @@ fun BankDetailsTable(bankDetailsList: List<com.viplove.licadvisornative.model.Ba
                 TableCell(text = it.accountNo, weight = 0.25f)
                 TableCell(text = it.accountType, weight = 0.25f)
             }
-            HorizontalDivider(color = Color.Black, thickness = 1.dp)
         }
     }
 }
 
 @Composable
 fun NomineeDetailsTable(nominees: List<Nominee>) {
-    Column(modifier = Modifier.border(BorderStroke(1.dp, Color.Black))) {
+    TableSurface(minWidth = 680.dp) {
         Row(Modifier.fillMaxWidth()) {
             TableCell(text = "NOMINEE NAME", weight = 0.25f, isHeader = true)
             TableCell(text = "AGE", weight = 0.15f, isHeader = true)
@@ -284,7 +329,6 @@ fun NomineeDetailsTable(nominees: List<Nominee>) {
             TableCell(text = "PERCENTAGE OF SHARE", weight = 0.2f, isHeader = true)
             TableCell(text = "CONTACT NO", weight = 0.2f, isHeader = true)
         }
-        HorizontalDivider(color = Color.Black, thickness = 1.dp)
         nominees.forEach {
             Row(Modifier.fillMaxWidth()) {
                 TableCell(text = it.name, weight = 0.25f)
@@ -293,29 +337,41 @@ fun NomineeDetailsTable(nominees: List<Nominee>) {
                 TableCell(text = it.percentageOfShare, weight = 0.2f)
                 TableCell(text = it.contactNo, weight = 0.2f)
             }
-            HorizontalDivider(color = Color.Black, thickness = 1.dp)
         }
     }
 }
 
 @Composable
 fun AppointeeTable(appointee: com.viplove.licadvisornative.model.Appointee) {
-    Column(modifier = Modifier.border(BorderStroke(1.dp, Color.Black))) {
+    TableSurface {
         Row(Modifier.fillMaxWidth()) {
             TableCell(text = "APPOINTEE NAME", weight = 0.33f, isHeader = true)
             TableCell(text = "AGE", weight = 0.33f, isHeader = true)
             TableCell(text = "RELATION", weight = 0.34f, isHeader = true)
         }
-        HorizontalDivider(color = Color.Black, thickness = 1.dp)
         Row(Modifier.fillMaxWidth()) {
             TableCell(text = appointee.name, weight = 0.33f)
             TableCell(text = appointee.age, weight = 0.33f)
             TableCell(text = appointee.relation, weight = 0.34f)
         }
-        HorizontalDivider(color = Color.Black, thickness = 1.dp)
     }
 }
 
+@Composable
+private fun TableSurface(
+    minWidth: androidx.compose.ui.unit.Dp = 560.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
+            .widthIn(min = minWidth),
+        content = content
+    )
+}
 
 @Composable
 fun RowScope.TableCell(
@@ -326,10 +382,12 @@ fun RowScope.TableCell(
     Text(
         text = text,
         Modifier
-            .border(BorderStroke(0.5.dp, Color.Gray))
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
+            .background(if (isHeader) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
             .weight(weight)
-            .padding(8.dp),
-        fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal,
+            .padding(Dimens.GutterSm),
+        color = if (isHeader) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Normal,
         fontSize = 10.sp
     )
 }
@@ -352,9 +410,19 @@ fun ReviewAndSubmitStep(dataSheet: ClientDataSheet) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Review Your Details", style = MaterialTheme.typography.headlineMedium)
-            Text("Please confirm all details are correct before submitting.", style = MaterialTheme.typography.bodyMedium)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionCard {
+                Text(
+                    "Review Your Details",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Please confirm all details are correct before submitting.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         item {
@@ -396,12 +464,58 @@ fun ReviewSectionCard(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            content()
-        }
+    SectionCard(
+        title = title,
+        trailing = {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = BrandGold.copy(alpha = 0.18f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Text(
+                    text = "Review",
+                    modifier = Modifier.padding(horizontal = Dimens.GutterSm, vertical = Dimens.GutterXs),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        content = content
+    )
+}
+
+@Composable
+private fun ReviewSubsection(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = Dimens.GutterXs)
+    )
+}
+
+@Composable
+private fun DocumentThumb(label: String, uri: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f), MaterialTheme.shapes.small)
+            .padding(Dimens.GutterSm)
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(model = Uri.parse(uri)),
+            contentDescription = label,
+            modifier = Modifier.size(44.dp),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(Dimens.GutterSm))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -423,7 +537,7 @@ fun ReviewPersonCard(title: String, person: PersonDetails) {
         InfoRow("IT Assessee", person.taxAssessee)
 
         Spacer(modifier = Modifier.height(12.dp))
-        Text("Occupation Details", style = MaterialTheme.typography.titleMedium)
+        ReviewSubsection("Occupation Details")
         // ... (Existing Occupation InfoRows remain the same)
         InfoRow("Occupation", person.occupation)
         InfoRow("Nature of Duties", person.natureOfDuties)
@@ -435,7 +549,7 @@ fun ReviewPersonCard(title: String, person: PersonDetails) {
 
 
         Spacer(modifier = Modifier.height(12.dp))
-        Text("Family & Health", style = MaterialTheme.typography.titleMedium)
+        ReviewSubsection("Family & Health")
         InfoRow("Height (cm)", person.heightCm)
         InfoRow("Weight (kg)", person.weightKg)
         InfoRow("State of Health", person.stateOfHealth)
@@ -447,16 +561,16 @@ fun ReviewPersonCard(title: String, person: PersonDetails) {
 
 
         Spacer(modifier = Modifier.height(12.dp))
-        Text("Bank & Nominee Details", style = MaterialTheme.typography.titleMedium)
+        ReviewSubsection("Bank & Nominee Details")
         // ADDED: The bank details table
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Bank Account", style = MaterialTheme.typography.titleSmall)
+        ReviewSubsection("Bank Account")
         BankDetailsTable(bankDetailsList = listOf(person.clientBankDetails))
 
         // ADDED: The nominee details table
         if (person.nominees.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Nominees", style = MaterialTheme.typography.titleSmall)
+            ReviewSubsection("Nominees")
             NomineeDetailsTable(nominees = person.nominees)
         }
 
@@ -464,7 +578,7 @@ fun ReviewPersonCard(title: String, person: PersonDetails) {
         person.appointee?.let {
             if (it.name.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Appointee (for Minor Nominee)", style = MaterialTheme.typography.titleSmall)
+                ReviewSubsection("Appointee (for Minor Nominee)")
                 AppointeeTable(appointee = it)
             }
         }
@@ -478,18 +592,9 @@ fun ReviewPersonCard(title: String, person: PersonDetails) {
         )
         if (documents.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Uploaded Documents", style = MaterialTheme.typography.titleMedium)
+            ReviewSubsection("Uploaded Documents")
             documents.forEach { (label, uri) ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = Uri.parse(uri)),
-                        contentDescription = label,
-                        modifier = Modifier.size(40.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(label)
-                }
+                DocumentThumb(label = label, uri = uri)
             }
         }
     }

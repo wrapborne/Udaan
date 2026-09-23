@@ -206,10 +206,7 @@ class AgentViewModel : BasePolicyViewModel() {
     }
 
     fun logout() {
-        viewModelScope.launch {
-            try { api.logout() } catch (_: Exception) {}
-            TokenManager.clearAll()
-        }
+        TokenManager.clearAll()
     }
 
     private fun fetchAgentDetails() {

@@ -4,6 +4,14 @@
     <string name="app_name">एलआईसी उड़ान</string>
 
     <!-- Login Screen -->
+    <!-- TODO: hi translation -->
+    <string name="login_subtitle_continue">Sign in to continue</string>
+    <!-- TODO: hi translation -->
+    <string name="login_card_title">Sign in</string>
+    <!-- TODO: hi translation -->
+    <string name="forgot_password_short">Forgot?</string>
+    <!-- TODO: hi translation -->
+    <string name="new_advisor_register">New advisor? Register</string>
     <string name="login_title">एलआईसी उड़ान</string>
     <string name="login_prompt">अपने खाते में लॉगिन करें</string>
     <string name="email_label">ईमेल या कोड</string>
@@ -13,6 +21,20 @@
     <string name="signup_prompt">खाता नहीं है? साइन अप करें</string>
 
     <!-- Registration Screen -->
+    <!-- TODO: hi translation -->
+    <string name="registration_subtitle">Join LIC Udaan</string>
+    <!-- TODO: hi translation -->
+    <string name="registration_details_title">Your details</string>
+    <!-- TODO: hi translation -->
+    <string name="registration_role_title">Role</string>
+    <!-- TODO: hi translation -->
+    <string name="registration_password_title">Password</string>
+    <!-- TODO: hi translation -->
+    <string name="role_advisor_short">Advisor</string>
+    <!-- TODO: hi translation -->
+    <string name="role_admin_do_short">Admin (DO)</string>
+    <!-- TODO: hi translation -->
+    <string name="advisor_do_code_helper">Required for advisor approval</string>
     <string name="create_account_title">खाता बनाएं</string>
     <string name="full_name_label">पूरा नाम</string>
     <string name="phone_number_label">फ़ोन नंबर</string>
@@ -27,6 +49,8 @@
     <string name="login_prompt_from_register">पहले से ही एक खाता है? लॉगिन</string>
 
     <!-- Forgot Password Screen -->
+    <!-- TODO: hi translation -->
+    <string name="forgot_password_headline">Forgot your password?</string>
     <string name="reset_password_title">पासवर्ड रीसेट</string>
     <string name="reset_password_prompt">अपना ईमेल पता दर्ज करें और हम आपको अपना पासवर्ड रीसेट करने के लिए एक लिंक भेजेंगे।</string>
     <string name="send_reset_link_button">रीसेट लिंक भेजें</string>

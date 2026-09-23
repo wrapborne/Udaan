@@ -6,11 +6,13 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons // <-- NEW IMPORT
 import androidx.compose.material.icons.filled.Visibility // <-- NEW IMPORT
 import androidx.compose.material.icons.filled.VisibilityOff // <-- NEW IMPORT
@@ -20,14 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation // <-- IMPORT
 import androidx.compose.ui.text.input.VisualTransformation // <-- NEW IMPORT
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,6 +44,13 @@ import androidx.navigation.navArgument
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.viplove.licadvisornative.network.ApiClient
 import com.viplove.licadvisornative.network.TokenManager
+import com.viplove.licadvisornative.ui.components.BrandLogo
+import com.viplove.licadvisornative.ui.components.LabeledTextField
+import com.viplove.licadvisornative.ui.components.SectionCard
+import com.viplove.licadvisornative.ui.theme.BrandGoldSoft
+import com.viplove.licadvisornative.ui.theme.BrandNavy
+import com.viplove.licadvisornative.ui.theme.BrandNavyContainer
+import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.screens.*
 import com.viplove.licadvisornative.ui.theme.LICAdvisorNativeTheme
 import com.viplove.licadvisornative.ui.viewmodel.LoginViewModel
@@ -107,7 +118,6 @@ fun SplashScreen(navController: NavController) {
                 "advisor" -> "agent_dashboard"
                 else -> {
                     Log.w(TAG, "SplashScreen: Unable to resolve role. Clearing session and returning to login.")
-                    runCatching { ApiClient.api.logout() }
                     TokenManager.clearAll()
                     "login"
                 }
@@ -116,8 +126,43 @@ fun SplashScreen(navController: NavController) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(BrandGoldSoft, BrandNavyContainer)))
+            .padding(Dimens.GutterXl),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
+        ) {
+            BrandLogo(size = 120.dp)
+            Text(
+                text = "LIC UDAAN",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = BrandNavy,
+                letterSpacing = 2.sp,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Loading your session...",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            CircularProgressIndicator(
+                modifier = Modifier.size(28.dp),
+                color = BrandNavy,
+                trackColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        }
+        Text(
+            text = "v${BuildConfig.VERSION_NAME}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -271,115 +316,116 @@ fun LoginScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(Dimens.GutterXl),
+        contentAlignment = Alignment.Center
     ) {
-
-        Image(
-            painter = painterResource(id = R.mipmap.logo_foreground),
-            contentDescription = "App Logo",
-            modifier = Modifier.size(120.dp)
-        )
-
-        Text(stringResource(R.string.login_title), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-        Text(stringResource(R.string.login_prompt), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.tertiary)
-        Spacer(modifier = Modifier.height(48.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text(stringResource(R.string.email_label)) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { passwordFocusRequester.requestFocus() }
-            )
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text(stringResource(R.string.password_label)) },
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(passwordFocusRequester),
-            singleLine = true,
-            // --- NEW: Toggle visibility ---
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            // --- NEW: Add the icon button ---
-            trailingIcon = {
-                val image = if (passwordVisible)
-                    Icons.Filled.Visibility
-                else
-                    Icons.Filled.VisibilityOff
-
-                val description = if (passwordVisible) "Hide password" else "Show password"
-
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, description)
-                }
-            },
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus()
-                    loginViewModel.loginUser(email, password, rememberMe)
-                }
-            )
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .widthIn(max = 480.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterLg)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = rememberMe,
-                    onCheckedChange = { rememberMe = it }
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = stringResource(R.string.remember_me),
-                    modifier = Modifier.clickable { rememberMe = !rememberMe }
-                )
-            }
-
-            TextButton(
-                onClick = { navController.navigate("forgot_password") }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                Text(stringResource(R.string.forgot_password))
+                BrandLogo(size = 64.dp)
+                Text(
+                    text = "LIC UDAAN",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = BrandNavy,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = stringResource(R.string.login_subtitle_continue),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                focusManager.clearFocus()
-                loginViewModel.loginUser(email, password, rememberMe)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            enabled = uiState !is LoginViewModel.LoginUiState.Loading
-        ) {
-            if (uiState is LoginViewModel.LoginUiState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-            } else {
-                Text(stringResource(R.string.login_button), fontSize = 16.sp)
+            SectionCard(title = stringResource(R.string.login_card_title)) {
+                LabeledTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = stringResource(R.string.email_label),
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(
+                        onNext = { passwordFocusRequester.requestFocus() }
+                    )
+                )
+                LabeledTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.password_label),
+                    modifier = Modifier.focusRequester(passwordFocusRequester),
+                    imeAction = ImeAction.Done,
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        val description = if (passwordVisible) "Hide password" else "Show password"
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(imageVector = image, contentDescription = description)
+                        }
+                    },
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            loginViewModel.loginUser(email, password, rememberMe)
+                        }
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = rememberMe,
+                            onCheckedChange = { rememberMe = it }
+                        )
+                        Text(
+                            text = stringResource(R.string.remember_me),
+                            modifier = Modifier.clickable { rememberMe = !rememberMe },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    TextButton(onClick = { navController.navigate("forgot_password") }) {
+                        Text(stringResource(R.string.forgot_password_short))
+                    }
+                }
+                Button(
+                    onClick = {
+                        focusManager.clearFocus()
+                        loginViewModel.loginUser(email, password, rememberMe)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Dimens.ButtonHeight),
+                    enabled = uiState !is LoginViewModel.LoginUiState.Loading,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    if (uiState is LoginViewModel.LoginUiState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(stringResource(R.string.login_button), fontSize = 16.sp)
+                    }
+                }
             }
-        }
-        TextButton(onClick = { navController.navigate("register") }) {
-            Text(stringResource(R.string.signup_prompt))
+            TextButton(onClick = { navController.navigate("register") }) {
+                Text(stringResource(R.string.new_advisor_register))
+            }
         }
     }
 }
