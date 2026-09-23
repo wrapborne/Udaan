@@ -148,7 +148,9 @@ service cloud.firestore {
                       (isOwnerAdvisor(resource.data.agentCode) &&
                        request.resource.data.agentCode == resource.data.agentCode &&
                        request.resource.data.adminId == resource.data.adminId);
-      allow delete: if canWriteAdvisorScoped(resource.data.agentCode, resource.data.adminId);
+      allow delete: if isUserRole('superadmin') ||
+                      isAdminLike() ||
+                      isOwnerAdvisor(resource.data.agentCode);
     }
 
     // ---------------------------------------------------------------------

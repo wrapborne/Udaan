@@ -461,10 +461,10 @@ class FirebaseApi {
                         .document(dueDocumentId(storedAgentCode, row.policyNumber, dueMonth))
                         .delete()
                         .await()
+                    clearedDueItems++
                 } catch (e: Exception) {
-                    return errorResponse(403, "Commission import failed while clearing due item for policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
+                    warnings += "Payment imported for policy ${row.policyNumber}, but the matching due item could not be cleared automatically: ${e.localizedMessage ?: "permission denied"}"
                 }
-                clearedDueItems++
             }
         }
 

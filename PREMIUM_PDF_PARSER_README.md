@@ -185,6 +185,13 @@ Crash capture update:
 - The crash recovery UI now blocks the normal navigation host while a saved crash is present. This prevents `SplashScreen`/session loading from immediately re-crashing before the crash can be copied.
 - The crash recovery UI includes `Clear session and open login`, which signs out Firebase, clears cached session data, clears the saved crash, and then lets the app continue to the login route.
 
+Commission due clearing update:
+
+- Advisor commission import no longer fails the whole import if the matching due item cannot be deleted.
+- Paid rows still save payment history and update the policy paid/active fields.
+- Due clear failures are returned as warnings, usually meaning the due item was not present under the expected key or an old due item has legacy/mismatched admin metadata.
+- Firestore rules now allow an advisor to delete premium due items that belong to their own `agentCode`, even if the due record has legacy/mismatched `adminId`.
+
 Commission import permission/debug update:
 
 - Firestore rules now treat raw DO/admin role variants such as `DO`, `do`, `Development Officer`, and `development_officer` as admin-like.
