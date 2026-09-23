@@ -178,40 +178,57 @@ fun AppNavigator() {
     val navController = rememberNavController()
 
     if (lastCrash != null) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("Last crash detected") },
-            text = {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(Dimens.GutterLg),
+            contentAlignment = Alignment.Center
+        ) {
+            SectionCard(title = "Last crash detected") {
                 Text(
                     text = lastCrash.orEmpty(),
                     modifier = Modifier
-                        .heightIn(max = 320.dp)
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
                         .verticalScroll(rememberScrollState()),
                     style = MaterialTheme.typography.bodySmall
                 )
-            },
-            confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText("LIC Udaan crash", lastCrash.orEmpty()))
                         Toast.makeText(context, "Crash copied", Toast.LENGTH_SHORT).show()
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.small
                 ) {
-                    Text("Copy")
+                    Text("Copy crash")
                 }
-            },
-            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        TokenManager.clearAll()
+                        CrashReporter.clearLastCrash(context)
+                        lastCrash = null
+                        Toast.makeText(context, "Session cleared", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Clear session and open login")
+                }
                 TextButton(
                     onClick = {
                         CrashReporter.clearLastCrash(context)
                         lastCrash = null
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Clear")
+                    Text("Continue")
                 }
             }
-        )
+        }
+        return
     }
 
     NavHost(navController = navController, startDestination = "splash") {

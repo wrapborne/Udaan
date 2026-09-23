@@ -165,6 +165,7 @@ Latest APK build after logout crash fix:
 - Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 22-09-2026 at 16:22:24 after replacing logout navigation with an activity restart flow.
 - Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 23-09-2026 at 14:06:59 after simplifying logout further.
 - Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 23-09-2026 after adding an in-app crash reporter.
+- Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 23-09-2026 after changing crash recovery to block splash/session loading until the crash is copied, cleared, or the session is cleared.
 
 Logout crash fix:
 
@@ -181,6 +182,8 @@ Crash capture update:
 - `AppNavigator` now shows a `Last crash detected` dialog on next app open when a crash was captured.
 - The dialog has `Copy` and `Clear` actions so the real phone crash can be shared without adb/logcat.
 - Local emulator smoke test: installed and launched the debug APK on `LIC_Stable_API_36_1`; startup stayed alive and no AndroidRuntime crash was recorded. The remaining crash appears to be specific to the logged-in/logout flow and should be diagnosed from the captured phone stack trace.
+- The crash recovery UI now blocks the normal navigation host while a saved crash is present. This prevents `SplashScreen`/session loading from immediately re-crashing before the crash can be copied.
+- The crash recovery UI includes `Clear session and open login`, which signs out Firebase, clears cached session data, clears the saved crash, and then lets the app continue to the login route.
 
 Commission import permission/debug update:
 
