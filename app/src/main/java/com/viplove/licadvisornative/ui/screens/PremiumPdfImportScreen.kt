@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -54,7 +55,8 @@ import java.util.Locale
 
 @Composable
 fun PremiumPdfImportScreen(
-    importViewModel: PremiumPdfImportViewModel = viewModel()
+    importViewModel: PremiumPdfImportViewModel = viewModel(),
+    onImportApplied: () -> Unit = {}
 ) {
     val state by importViewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -64,6 +66,10 @@ fun PremiumPdfImportScreen(
             uri?.let { importViewModel.parsePdf(it, context.contentResolver) }
         }
     )
+
+    LaunchedEffect(state.applyResult) {
+        if (state.applyResult != null) onImportApplied()
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

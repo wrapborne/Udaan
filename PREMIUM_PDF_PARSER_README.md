@@ -191,6 +191,8 @@ Commission due clearing update:
 - Paid rows still save payment history and update the policy paid/active fields.
 - Due clear failures are returned as warnings, usually meaning the due item was not present under the expected key or an old due item has legacy/mismatched admin metadata.
 - Firestore rules now allow an advisor to delete premium due items that belong to their own `agentCode`, even if the due record has legacy/mismatched `adminId`.
+- Commission paid rows now update policy `lastPremiumPaidDate` only when the paid due date is newer than the policy's existing last paid date. This prevents an older row or older commission bill from downgrading the visible last paid month.
+- After a PDF import is applied, the agent/admin dashboard policy lists refresh automatically so the updated last paid value appears without manually refreshing the screen.
 
 Commission import permission/debug update:
 

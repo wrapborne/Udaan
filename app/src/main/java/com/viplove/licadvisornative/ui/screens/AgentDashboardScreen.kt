@@ -119,7 +119,7 @@ fun AgentDashboardScreen(
             when (selectedTabIndex) {
                 0 -> AgentPoliciesTab(agentViewModel, agentUiState)
 
-                1 -> PremiumPdfImportScreen()
+                1 -> PremiumPdfImportScreen(onImportApplied = agentViewModel::refreshData)
 
                 2 -> {
                     // Filter the main list to get only ULIP policies

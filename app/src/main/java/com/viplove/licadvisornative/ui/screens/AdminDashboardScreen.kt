@@ -110,7 +110,7 @@ fun AdminDashboardScreen(
             }
             when (selectedTabIndex) {
                 0 -> ProposalsTab(adminViewModel)
-                1 -> PremiumPdfImportScreen()
+                1 -> PremiumPdfImportScreen(onImportApplied = adminViewModel::refreshData)
                 2 -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
                     val proposalsUiState = proposalsState as? AdminViewModel.ProposalsUiState

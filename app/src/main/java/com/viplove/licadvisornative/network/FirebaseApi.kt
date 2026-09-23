@@ -436,14 +436,24 @@ class FirebaseApi {
                 return errorResponse(403, "Commission import failed while finding policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
             }
             if (policyDoc != null) {
+                val existingPolicy = policyDoc.get().await()
+                val existingPaidDateMillis = existingPolicy.getLong("lastPremiumPaidDate")
+                    ?: existingPolicy.getLong("last_premium_paid_date")
+                val shouldUsePaidDate = paidDueDateMillis != null &&
+                    (existingPaidDateMillis == null || paidDueDateMillis >= existingPaidDateMillis)
                 val updates = mutableMapOf<String, Any>(
                     "policyStatus" to "ACTIVE",
-                    "lastPaidDueDate" to row.dueDate,
-                    "lastPaymentAdjustmentDate" to row.adjustmentDate,
                     "lastPaymentImportId" to importId,
                     "lastPaymentImportAt" to now
                 )
-                paidDueDateMillis?.let { updates["lastPremiumPaidDate"] = it }
+                if (shouldUsePaidDate) {
+                    updates["lastPaidDueDate"] = row.dueDate
+                    updates["lastPaymentAdjustmentDate"] = row.adjustmentDate
+                    updates["lastPremiumPaidDate"] = paidDueDateMillis!!
+                } else if (existingPaidDateMillis == null && paidDueDateMillis == null) {
+                    updates["lastPaidDueDate"] = row.dueDate
+                    updates["lastPaymentAdjustmentDate"] = row.adjustmentDate
+                }
                 try {
                     policyDoc.set(updates, SetOptions.merge()).await()
                 } catch (e: Exception) {
@@ -865,11 +875,17 @@ class FirebaseApi {
     }
 
     private fun parseDateMillis(date: String): Long? {
-        return try {
-            SimpleDateFormat("dd/MM/yyyy", Locale.US).parse(date)?.time
-        } catch (_: Exception) {
-            null
+        val cleaned = date.trim()
+        val patterns = listOf("dd/MM/yyyy", "dd-MM-yyyy", "dd/MM/yy", "dd-MM-yy")
+        patterns.forEach { pattern ->
+            val parsed = try {
+                SimpleDateFormat(pattern, Locale.US).apply { isLenient = false }.parse(cleaned)?.time
+            } catch (_: Exception) {
+                null
+            }
+            if (parsed != null) return parsed
         }
+        return null
     }
 
     private fun dueMonthFromDueDate(dueDate: String): String {
