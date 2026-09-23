@@ -164,6 +164,7 @@ Latest APK build after logout crash fix:
 - Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 22-09-2026 at 16:09:06 after commission import diagnostics and rules updates.
 - Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 22-09-2026 at 16:22:24 after replacing logout navigation with an activity restart flow.
 - Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 23-09-2026 at 14:06:59 after simplifying logout further.
+- Built `app/build/outputs/apk/debug/app-debug.apk` successfully on 23-09-2026 after adding an in-app crash reporter.
 
 Logout crash fix:
 
@@ -173,6 +174,13 @@ Logout crash fix:
 - Dashboard logout no longer calls the network/API logout endpoint after local Firebase sign-out. Firebase local `signOut()` plus cached-session clearing is treated as the logout, avoiding async teardown races.
 - The earlier unsafe `popUpTo(0)` route was removed.
 - This addresses the crash pattern where logout could leave the app in a half-authenticated state, then reopening the app tried to resume the wrong session/dashboard.
+
+Crash capture update:
+
+- Added `CrashReporter`, installed from `MyApplication`, to store the latest uncaught crash stack trace locally before Android closes the app.
+- `AppNavigator` now shows a `Last crash detected` dialog on next app open when a crash was captured.
+- The dialog has `Copy` and `Clear` actions so the real phone crash can be shared without adb/logcat.
+- Local emulator smoke test: installed and launched the debug APK on `LIC_Stable_API_36_1`; startup stayed alive and no AndroidRuntime crash was recorded. The remaining crash appears to be specific to the logged-in/logout flow and should be diagnosed from the captured phone stack trace.
 
 Commission import permission/debug update:
 

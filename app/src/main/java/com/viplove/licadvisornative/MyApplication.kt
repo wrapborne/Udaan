@@ -3,6 +3,7 @@ package com.viplove.licadvisornative
 import android.app.Application
 import com.viplove.licadvisornative.firebase.FirebaseBootstrap
 import com.viplove.licadvisornative.network.TokenManager
+import com.viplove.licadvisornative.util.CrashReporter
 import com.viplove.licadvisornative.util.NotificationHelper
 import com.viplove.licadvisornative.util.RemoteConfigManager
 import com.viplove.licadvisornative.worker.DueDateWorker
@@ -10,6 +11,8 @@ import com.viplove.licadvisornative.worker.DueDateWorker
 class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        CrashReporter.install(this)
 
         FirebaseBootstrap.initialize(this)
 

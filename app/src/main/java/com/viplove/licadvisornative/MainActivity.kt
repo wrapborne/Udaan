@@ -1,6 +1,9 @@
 // File: app/src/main/java/com/viplove/licadvisornative/MainActivity.kt
 package com.viplove.licadvisornative
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -54,6 +57,7 @@ import com.viplove.licadvisornative.ui.theme.Dimens
 import com.viplove.licadvisornative.ui.screens.*
 import com.viplove.licadvisornative.ui.theme.LICAdvisorNativeTheme
 import com.viplove.licadvisornative.ui.viewmodel.LoginViewModel
+import com.viplove.licadvisornative.util.CrashReporter
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -169,7 +173,46 @@ fun SplashScreen(navController: NavController) {
 
 @Composable
 fun AppNavigator() {
+    val context = LocalContext.current
+    var lastCrash by remember { mutableStateOf(CrashReporter.getLastCrash(context)) }
     val navController = rememberNavController()
+
+    if (lastCrash != null) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Last crash detected") },
+            text = {
+                Text(
+                    text = lastCrash.orEmpty(),
+                    modifier = Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("LIC Udaan crash", lastCrash.orEmpty()))
+                        Toast.makeText(context, "Crash copied", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Copy")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        CrashReporter.clearLastCrash(context)
+                        lastCrash = null
+                    }
+                ) {
+                    Text("Clear")
+                }
+            }
+        )
+    }
 
     NavHost(navController = navController, startDestination = "splash") {
         composable("splash") { SplashScreen(navController) }
