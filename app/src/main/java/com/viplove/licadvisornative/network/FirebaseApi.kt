@@ -291,6 +291,7 @@ class FirebaseApi {
         }
 
         var updatedPolicies = 0
+        var reconciledDueItems = 0
         val warnings = result.warnings.toMutableList()
         val importId = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
@@ -298,6 +299,15 @@ class FirebaseApi {
         val storedAgentCode = appStoredAgentCode(result.agentCode)
 
         result.rows.forEach { row ->
+            val paidPayment = try {
+                findPaidPaymentForDue(storedAgentCode, row.policyNumber, row.fupMonth)
+            } catch (e: Exception) {
+                warnings += "Could not cross-check payment history for policy ${row.policyNumber}, FUP ${row.fupMonth}: ${e.localizedMessage ?: "permission denied"}"
+                null
+            }
+            val isAlreadyPaidByCommission = paidPayment != null
+            if (isAlreadyPaidByCommission) reconciledDueItems++
+
             val dueRef = firestore.collection("premium_due_items")
                 .document(dueDocumentId(storedAgentCode, row.policyNumber, row.fupMonth))
             dueRef.set(
@@ -315,7 +325,16 @@ class FirebaseApi {
                     "dueKey" to row.dueKey,
                     "premiumYearType" to row.premiumYearType.name,
                     "isLapsed" to row.isLapsed,
-                    "status" to if (row.isLapsed) "LAPSED" else "DUE",
+                    "status" to when {
+                        isAlreadyPaidByCommission -> "PAID_BY_COMMISSION"
+                        row.isLapsed -> "LAPSED"
+                        else -> "DUE"
+                    },
+                    "paidByCommission" to isAlreadyPaidByCommission,
+                    "matchedPaymentId" to (paidPayment?.id ?: ""),
+                    "matchedPaymentDueDate" to (paidPayment?.getString("dueDate") ?: ""),
+                    "matchedPaymentAdjustmentDate" to (paidPayment?.getString("adjustmentDate") ?: ""),
+                    "reconciledAt" to if (isAlreadyPaidByCommission) now else 0L,
                     "installmentPremium" to row.installmentPremium,
                     "dueCount" to row.dueCount,
                     "gst" to row.gst,
@@ -328,7 +347,33 @@ class FirebaseApi {
                 SetOptions.merge()
             ).await()
 
-            if (row.isLapsed) {
+            if (isAlreadyPaidByCommission) {
+                val policyDoc = findPolicyDocumentByNumber(row.policyNumber)
+                if (policyDoc != null) {
+                    val paidDueDate = paidPayment?.getString("dueDate").orEmpty()
+                    val adjustmentDate = paidPayment?.getString("adjustmentDate").orEmpty()
+                    val paidDueDateMillis = parseDateMillis(paidDueDate)
+                    val existingPolicy = policyDoc.get().await()
+                    val existingPaidDateMillis = existingPolicy.getLong("lastPremiumPaidDate")
+                        ?: existingPolicy.getLong("last_premium_paid_date")
+                    val updates = mutableMapOf<String, Any>(
+                        "policyStatus" to "ACTIVE",
+                        "lastDueImportId" to importId,
+                        "lastDueImportAt" to now,
+                        "lastPaymentImportAt" to now
+                    )
+                    if (paidDueDateMillis != null && (existingPaidDateMillis == null || paidDueDateMillis >= existingPaidDateMillis)) {
+                        updates["lastPaidDueDate"] = paidDueDate
+                        updates["lastPaymentAdjustmentDate"] = adjustmentDate
+                        updates["lastPremiumPaidDate"] = paidDueDateMillis
+                    }
+                    policyDoc.set(updates, SetOptions.merge()).await()
+                    updatedPolicies++
+                } else {
+                    warnings += "Due row ${row.policyNumber} matched a paid commission row, but policy was not found."
+                }
+                warnings += "Policy ${row.policyNumber} FUP ${row.fupMonth} was already paid in commission history, so due row was reconciled as paid."
+            } else if (row.isLapsed) {
                 val policyDoc = findPolicyDocumentByNumber(row.policyNumber)
                 if (policyDoc != null) {
                     policyDoc.set(
@@ -350,6 +395,7 @@ class FirebaseApi {
             PremiumPdfImportApplyResult(
                 importedRows = result.rows.size,
                 updatedPolicies = updatedPolicies,
+                reconciledDueItems = reconciledDueItems,
                 warnings = warnings.distinct()
             )
         )
@@ -483,6 +529,7 @@ class FirebaseApi {
                 importedRows = result.rows.size,
                 updatedPolicies = updatedPolicies,
                 clearedDueItems = clearedDueItems,
+                reconciledDueItems = clearedDueItems,
                 reversalRows = reversalRows,
                 warnings = warnings.distinct()
             )
@@ -786,6 +833,24 @@ class FirebaseApi {
             it.getString("policyNumber").equals(policyNumber, ignoreCase = true) ||
                 it.getString("policy_number").equals(policyNumber, ignoreCase = true)
         }?.reference
+
+    private suspend fun findPaidPaymentForDue(
+        agentCode: String,
+        policyNumber: String,
+        dueMonth: String
+    ): DocumentSnapshot? {
+        if (dueMonth.isBlank()) return null
+        return firestore.collection("premium_payment_history")
+            .whereEqualTo("agentCode", agentCode)
+            .get()
+            .await()
+            .documents
+            .firstOrNull { payment ->
+                payment.getString("policyNumber").equals(policyNumber, ignoreCase = true) &&
+                    payment.getString("status") == CommissionRowStatus.PAID.name &&
+                    dueMonthFromDueDate(payment.getString("dueDate").orEmpty()) == dueMonth
+            }
+    }
 
     private suspend fun findUserByCodeVariants(
         field: String,

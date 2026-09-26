@@ -146,8 +146,7 @@ service cloud.firestore {
       allow update: if isUserRole('superadmin') ||
                       isAdminLike() ||
                       (isOwnerAdvisor(resource.data.agentCode) &&
-                       request.resource.data.agentCode == resource.data.agentCode &&
-                       request.resource.data.adminId == resource.data.adminId);
+                       request.resource.data.agentCode == resource.data.agentCode);
       allow delete: if isUserRole('superadmin') ||
                       isAdminLike() ||
                       isOwnerAdvisor(resource.data.agentCode);

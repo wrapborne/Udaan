@@ -193,6 +193,9 @@ Commission due clearing update:
 - Firestore rules now allow an advisor to delete premium due items that belong to their own `agentCode`, even if the due record has legacy/mismatched `adminId`.
 - Commission paid rows now update policy `lastPremiumPaidDate` only when the paid due date is newer than the policy's existing last paid date. This prevents an older row or older commission bill from downgrading the visible last paid month.
 - After a PDF import is applied, the agent/admin dashboard policy lists refresh automatically so the updated last paid value appears without manually refreshing the screen.
+- Premium due import now cross-checks existing `premium_payment_history` rows by `agentCode + policyNumber + due month`.
+- If a due row already has a paid commission row, it is stored with status `PAID_BY_COMMISSION`, linked to the matched payment id/date, and policy status stays/returns `ACTIVE` instead of being marked lapsed.
+- Import summaries now include a `reconciled` count for due rows that were matched to existing commission payments.
 
 Commission import permission/debug update:
 

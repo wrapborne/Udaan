@@ -129,7 +129,7 @@ fun PremiumPdfImportScreen(
                 StatusCard(
                     icon = Icons.Default.CheckCircle,
                     title = "Import applied",
-                    message = "Rows: ${result.importedRows}, policies updated: ${result.updatedPolicies}, dues cleared: ${result.clearedDueItems}, reversals: ${result.reversalRows}",
+                    message = "Rows: ${result.importedRows}, policies updated: ${result.updatedPolicies}, dues cleared: ${result.clearedDueItems}, reconciled: ${result.reconciledDueItems}, reversals: ${result.reversalRows}",
                     color = BrandSuccess
                 )
             }
