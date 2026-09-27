@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "scripts": {
-    "lint": "eslint --ext .js,.ts .",
+    "lint": "eslint --ext .ts src",
     "build": "tsc",
     "repair:duplicate-policies": "node scripts/repairDuplicatePolicies.js",
     "admin:update-superadmin-email": "node scripts/updateSuperadminEmail.js",

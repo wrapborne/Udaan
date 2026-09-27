@@ -102,22 +102,39 @@ class FirebaseApi {
     }
 
     suspend fun lookupEmailByCode(request: LookupByCodeRequest): Response<LookupEmailResponse> {
-        val normalized = normalizeCode(request.code)
-        val variants = buildCodeVariants(normalized)
-        val match = withTimeout(15_000) {
-            findUserByCodeVariants("agencyCode", variants)
-                ?: findUserByCodeVariants("doCode", variants)
-                ?: findUserByCodeVariants("agency_code", variants)
-                ?: findUserByCodeVariants("do_code", variants)
-                ?: findUserByCodeVariants("userCode", variants)
-                ?: findUserByCodeVariants("user_code", variants)
-                ?: findUserByCodeVariants("code", variants)
-                ?: findUserByNormalizedCode(variants)
-        }
-        return if (match != null) {
-            Response.success(LookupEmailResponse(match.getString("email").orEmpty()))
-        } else {
-            errorResponse(404, "No account found.")
+        return try {
+            val result = functions
+                .getHttpsCallable("lookupEmailByCode")
+                .call(mapOf("code" to request.code))
+                .await()
+            val email = (result.data as? Map<*, *>)?.get("email")?.toString().orEmpty()
+            if (email.isNotBlank()) {
+                Response.success(LookupEmailResponse(email))
+            } else {
+                errorResponse(404, "No account found.")
+            }
+        } catch (functionError: Exception) {
+            val normalized = normalizeCode(request.code)
+            val variants = buildCodeVariants(normalized)
+            val match = try {
+                withTimeout(15_000) {
+                    findUserByCodeVariants("agencyCode", variants)
+                        ?: findUserByCodeVariants("doCode", variants)
+                        ?: findUserByCodeVariants("agency_code", variants)
+                        ?: findUserByCodeVariants("do_code", variants)
+                        ?: findUserByCodeVariants("userCode", variants)
+                        ?: findUserByCodeVariants("user_code", variants)
+                        ?: findUserByCodeVariants("code", variants)
+                        ?: findUserByNormalizedCode(variants)
+                }
+            } catch (_: Exception) {
+                null
+            }
+            if (match != null) {
+                Response.success(LookupEmailResponse(match.getString("email").orEmpty()))
+            } else {
+                errorResponse(404, functionError.localizedMessage ?: "No account found.")
+            }
         }
     }
 

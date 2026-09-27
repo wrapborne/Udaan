@@ -8,6 +8,42 @@ const db = getFirestore();
 const auth = getAuth();
 
 /**
+ * Normalizes LIC advisor/DO codes for comparison.
+ * @param {string | undefined | null} code Raw user-entered or stored code.
+ * @return {string} Code without LIC prefix, spaces, and leading zero padding.
+ */
+function normalizeCode(code: string | undefined | null): string {
+  const cleaned = (code || "")
+    .trim()
+    .replace(/\s/g, "")
+    .toUpperCase()
+    .replace(/^LIC/, "");
+  const withoutLeadingZeros = cleaned.replace(/^0+/, "");
+  return withoutLeadingZeros || (cleaned ? "0" : "");
+}
+
+/**
+ * Builds stored-code variants used by old and new user documents.
+ * @param {string} code Raw user-entered code.
+ * @return {string[]} Possible stored forms of the same code.
+ */
+function buildCodeVariants(code: string): string[] {
+  const normalized = normalizeCode(code);
+  if (!normalized) {
+    return [];
+  }
+  const withLeadingZero = normalized.startsWith("0") ?
+    normalized :
+    `0${normalized}`;
+  return Array.from(new Set([
+    normalized,
+    withLeadingZero,
+    `LIC${normalized}`,
+    `LIC${withLeadingZero}`,
+  ]));
+}
+
+/**
  * Loads the caller profile and verifies it has one of the allowed roles.
  * @param {functions.https.CallableRequest} request Callable request from the
  * authenticated client.
@@ -45,6 +81,59 @@ async function requireCallerRole(
 
   return callerDoc;
 }
+
+export const lookupEmailByCode = functions.https.onCall(async (request) => {
+  const code = request.data?.code as string | undefined;
+  const variants = buildCodeVariants(code || "");
+
+  if (variants.length === 0) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Code is required."
+    );
+  }
+
+  const directFields = [
+    "agencyCode",
+    "doCode",
+    "agency_code",
+    "do_code",
+    "userCode",
+    "user_code",
+    "code",
+  ];
+
+  for (const field of directFields) {
+    for (const variant of variants) {
+      const snapshot = await db
+        .collection("users")
+        .where(field, "==", variant)
+        .limit(1)
+        .get();
+      if (!snapshot.empty) {
+        return {email: snapshot.docs[0].get("email") || ""};
+      }
+    }
+  }
+
+  const allUsers = await db.collection("users").get();
+  for (const user of allUsers.docs) {
+    const candidateCodes = directFields.map((field) => user.get(field));
+    const matches = candidateCodes.some((candidate) =>
+      variants.some((variant) =>
+        normalizeCode(String(candidate || "")) === normalizeCode(variant)
+      )
+    );
+    if (matches) {
+      return {email: user.get("email") || ""};
+    }
+  }
+
+  throw new functions.https.HttpsError(
+    "not-found",
+    "No account found with this code."
+  );
+});
 
 export const registerNewUser = functions.https.onCall(async (request) => {
   const {
