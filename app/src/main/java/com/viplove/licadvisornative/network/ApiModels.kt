@@ -49,6 +49,24 @@ data class LookupEmailResponse(
     val email: String
 )
 
+data class GmailImportHistoryItem(
+    val id: String,
+    val fileName: String,
+    val subject: String,
+    val type: String,
+    val status: String,
+    val reportMonth: String,
+    val rowCount: Int,
+    val importedRows: Int,
+    val updatedPolicies: Int,
+    val clearedDueItems: Int,
+    val reconciledDueItems: Int,
+    val reversalRows: Int,
+    val error: String,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
 data class ApiUser(
     val id: String,
     val email: String,

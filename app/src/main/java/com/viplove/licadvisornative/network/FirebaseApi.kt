@@ -148,6 +148,24 @@ class FirebaseApi {
         return Response.success(MessageResponse("Logged out successfully."))
     }
 
+    suspend fun getGmailImportHistory(limit: Int = 20): Response<List<GmailImportHistoryItem>> {
+        val uid = auth.currentUser?.uid ?: return errorResponse(401, "Not authenticated.")
+        return try {
+            val items = firestore.collection("gmail_imports")
+                .whereEqualTo("uid", uid)
+                .get()
+                .await()
+                .documents
+                .map { it.toGmailImportHistoryItem() }
+                .sortedByDescending { it.updatedAt }
+                .take(limit.coerceIn(1, 50))
+
+            Response.success(items)
+        } catch (error: Exception) {
+            errorResponse(500, error.localizedMessage ?: "Could not load Gmail import history.")
+        }
+    }
+
     suspend fun refreshToken(): Response<AuthResponse> {
         val userDoc = loadCurrentUserDocument() ?: return errorResponse(401, "Not authenticated.")
         val firebaseUser = auth.currentUser ?: return errorResponse(401, "Not authenticated.")
@@ -1043,6 +1061,39 @@ class FirebaseApi {
                 ?: getString("profile_picture_path"),
             startDate = (get("startDate") ?: get("start_date"))?.toString()
         )
+    }
+
+    private fun DocumentSnapshot.toGmailImportHistoryItem(): GmailImportHistoryItem {
+        val applyResult = get("applyResult") as? Map<*, *> ?: emptyMap<Any, Any>()
+        return GmailImportHistoryItem(
+            id = id,
+            fileName = getString("fileName").orEmpty(),
+            subject = getString("subject").orEmpty(),
+            type = getString("pdfType").orEmpty().ifBlank { "UNKNOWN" },
+            status = getString("status").orEmpty(),
+            reportMonth = getString("reportMonth").orEmpty(),
+            rowCount = getNumberAsInt("rowCount"),
+            importedRows = applyResult.numberAsInt("importedRows"),
+            updatedPolicies = applyResult.numberAsInt("updatedPolicies"),
+            clearedDueItems = applyResult.numberAsInt("clearedDueItems"),
+            reconciledDueItems = applyResult.numberAsInt("reconciledDueItems"),
+            reversalRows = applyResult.numberAsInt("reversalRows"),
+            error = getString("error").orEmpty(),
+            createdAt = getNumberAsLong("createdAt"),
+            updatedAt = getNumberAsLong("updatedAt")
+        )
+    }
+
+    private fun DocumentSnapshot.getNumberAsInt(field: String): Int {
+        return ((get(field) as? Number)?.toInt()) ?: 0
+    }
+
+    private fun DocumentSnapshot.getNumberAsLong(field: String): Long {
+        return ((get(field) as? Number)?.toLong()) ?: 0L
+    }
+
+    private fun Map<*, *>.numberAsInt(field: String): Int {
+        return ((this[field] as? Number)?.toInt()) ?: 0
     }
 
     private fun DocumentSnapshot.toApiPolicy(): ApiPolicy {

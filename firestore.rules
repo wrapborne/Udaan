@@ -167,6 +167,17 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // gmail_imports
+    // ---------------------------------------------------------------------
+    match /gmail_imports/{importId} {
+      allow get, list: if request.auth != null &&
+                         (resource.data.uid == request.auth.uid ||
+                          isAdminLike() ||
+                          isUserRole('superadmin'));
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // app_config
     // ---------------------------------------------------------------------
     match /app_config/{configId} {
