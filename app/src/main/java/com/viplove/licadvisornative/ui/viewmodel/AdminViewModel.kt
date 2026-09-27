@@ -11,6 +11,7 @@ import com.viplove.licadvisornative.model.PremiumSummary
 import com.viplove.licadvisornative.model.User
 import com.viplove.licadvisornative.network.ApiClient
 import com.viplove.licadvisornative.network.TokenManager
+import com.viplove.licadvisornative.network.UpdateProfileRequest
 import com.viplove.licadvisornative.network.UpdateStartDateRequest
 import com.viplove.licadvisornative.network.toClientDataSheet
 import com.viplove.licadvisornative.network.toPolicy
@@ -235,6 +236,24 @@ class AdminViewModel : ViewModel() {
     fun updateAdminStartDate(adminUid: String, newStartDate: Long) {
         viewModelScope.launch {
             try { api.updateStartDate(adminUid, UpdateStartDateRequest(newStartDate)); refreshData() } catch (_: Exception) {}
+        }
+    }
+
+    fun updateProfileDetails(name: String, phone: String) {
+        viewModelScope.launch {
+            try {
+                val response = api.updateProfile(UpdateProfileRequest(name = name, phone = phone))
+                if (response.isSuccessful) {
+                    val updatedAdmin = response.body()?.toUser()
+                    _currentAdminState.value = updatedAdmin
+                    _uiState.update { (it as ProposalsUiState).copy(currentUser = updatedAdmin) }
+                } else {
+                    _uiState.update { (it as ProposalsUiState).copy(error = "Failed to update profile.") }
+                }
+            } catch (error: Exception) {
+                Log.e(TAG, "Failed to update profile", error)
+                _uiState.update { (it as ProposalsUiState).copy(error = "Network error updating profile.") }
+            }
         }
     }
 

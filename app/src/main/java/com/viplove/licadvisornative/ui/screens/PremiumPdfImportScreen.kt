@@ -58,6 +58,25 @@ fun PremiumPdfImportScreen(
     importViewModel: PremiumPdfImportViewModel = viewModel(),
     onImportApplied: () -> Unit = {}
 ) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(Dimens.ScreenHPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
+    ) {
+        item {
+            ManualPdfImportFallbackSection(
+                importViewModel = importViewModel,
+                onImportApplied = onImportApplied
+            )
+        }
+    }
+}
+
+@Composable
+fun ManualPdfImportFallbackSection(
+    importViewModel: PremiumPdfImportViewModel = viewModel(),
+    onImportApplied: () -> Unit = {}
+) {
     val state by importViewModel.uiState.collectAsState()
     val context = LocalContext.current
     val pdfPicker = rememberLauncherForActivityResult(
@@ -71,38 +90,32 @@ fun PremiumPdfImportScreen(
         if (state.applyResult != null) onImportApplied()
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Dimens.ScreenHPadding),
-        verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
-    ) {
-        item {
-            SectionCard(title = "PDF Import") {
-                Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
-                    Text(
-                        "Import LIC premium due lists or commission bills. Review parsed rows before updating policy dues and payment history.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm),
-                        verticalAlignment = Alignment.CenterVertically
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)) {
+        SectionCard(title = "Manual PDF Upload") {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
+                Text(
+                    "Fallback option if Gmail import does not work. Select a LIC premium due list or commission bill PDF, review it, then confirm import.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { pdfPicker.launch("application/pdf") },
+                        enabled = !state.isParsing && !state.isApplying
                     ) {
-                        Button(
-                            onClick = { pdfPicker.launch("application/pdf") },
+                        Icon(Icons.Default.UploadFile, contentDescription = null)
+                        Spacer(Modifier.padding(horizontal = 4.dp))
+                        Text("Select PDF")
+                    }
+                    if (state.parseResult != null) {
+                        OutlinedButton(
+                            onClick = { importViewModel.clear() },
                             enabled = !state.isParsing && !state.isApplying
                         ) {
-                            Icon(Icons.Default.UploadFile, contentDescription = null)
-                            Spacer(Modifier.padding(horizontal = 4.dp))
-                            Text("Select PDF")
-                        }
-                        if (state.parseResult != null) {
-                            OutlinedButton(
-                                onClick = { importViewModel.clear() },
-                                enabled = !state.isParsing && !state.isApplying
-                            ) {
-                                Text("Clear")
-                            }
+                            Text("Clear")
                         }
                     }
                 }
@@ -110,59 +123,49 @@ fun PremiumPdfImportScreen(
         }
 
         if (state.isParsing) {
-            item { LoadingCard("Reading PDF...") }
+            LoadingCard("Reading PDF...")
         }
 
         state.error?.let { message ->
-            item {
-                StatusCard(
-                    icon = Icons.Default.Error,
-                    title = "Import issue",
-                    message = message,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            StatusCard(
+                icon = Icons.Default.Error,
+                title = "Import issue",
+                message = message,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         state.applyResult?.let { result ->
-            item {
-                StatusCard(
-                    icon = Icons.Default.CheckCircle,
-                    title = "Import applied",
-                    message = "Rows: ${result.importedRows}, policies updated: ${result.updatedPolicies}, dues cleared: ${result.clearedDueItems}, reconciled: ${result.reconciledDueItems}, reversals: ${result.reversalRows}",
-                    color = BrandSuccess
-                )
-            }
+            StatusCard(
+                icon = Icons.Default.CheckCircle,
+                title = "Import applied",
+                message = "Rows: ${result.importedRows}, policies updated: ${result.updatedPolicies}, dues cleared: ${result.clearedDueItems}, reconciled: ${result.reconciledDueItems}, reversals: ${result.reversalRows}",
+                color = BrandSuccess
+            )
         }
 
         when (val result = state.parseResult) {
             is LicPremiumPdfParseResult.PremiumDueList -> {
-                item {
-                    PremiumDueReview(
-                        result = result.result,
-                        isApplying = state.isApplying,
-                        onApply = importViewModel::applyCurrentImport
-                    )
-                }
+                PremiumDueReview(
+                    result = result.result,
+                    isApplying = state.isApplying,
+                    onApply = importViewModel::applyCurrentImport
+                )
             }
             is LicPremiumPdfParseResult.CommissionBill -> {
-                item {
-                    CommissionBillReview(
-                        result = result.result,
-                        isApplying = state.isApplying,
-                        onApply = importViewModel::applyCurrentImport
-                    )
-                }
+                CommissionBillReview(
+                    result = result.result,
+                    isApplying = state.isApplying,
+                    onApply = importViewModel::applyCurrentImport
+                )
             }
             is LicPremiumPdfParseResult.Error, null -> {
                 if (!state.isParsing && state.error == null) {
-                    item {
-                        EmptyState(
-                            icon = Icons.Default.PictureAsPdf,
-                            title = "No PDF selected",
-                            message = "Select a premium due list or commission bill to preview import rows."
-                        )
-                    }
+                    EmptyState(
+                        icon = Icons.Default.PictureAsPdf,
+                        title = "No PDF selected",
+                        message = "Select a premium due list or commission bill to preview import rows."
+                    )
                 }
             }
         }

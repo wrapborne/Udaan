@@ -12,8 +12,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -63,7 +65,6 @@ fun AdminDashboardScreen(
     var showProfileDialog by remember { mutableStateOf(false) }
     val tabs = listOf(
         "Proposals",
-        "PDF Import",
         "ULIP",
         "Data Analysis",
         "Premium Summaries",
@@ -115,25 +116,24 @@ fun AdminDashboardScreen(
             }
             when (selectedTabIndex) {
                 0 -> ProposalsTab(adminViewModel)
-                1 -> PremiumPdfImportScreen(onImportApplied = adminViewModel::refreshData)
-                2 -> {
+                1 -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
                     val proposalsUiState = proposalsState as? AdminViewModel.ProposalsUiState
                     val ulipPolicies = proposalsUiState?.filteredPolicies?.filter { it.isUlip } ?: emptyList()
                     UlipScreen(policies = ulipPolicies)
                 }
-                3 -> AdminDateAnalysisTab(adminViewModel)
-                4 -> PremiumSummaryTab(adminViewModel)
-                5 -> {
+                2 -> AdminDateAnalysisTab(adminViewModel)
+                3 -> PremiumSummaryTab(adminViewModel)
+                4 -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
                     val policies = (proposalsState as? AdminViewModel.ProposalsUiState)?.allPolicies ?: emptyList()
                     AgentPerformanceTab(policies = policies)
                 }
-                6 -> AdvisorManagementTab(adminViewModel)
-                7 -> LeadsTab(navController, adminViewModel)
-                8 -> AnalyticsTab(adminViewModel)
-                9 -> NonMedicalCheckerScreen()
-                10 -> {
+                5 -> AdvisorManagementTab(adminViewModel)
+                6 -> LeadsTab(navController, adminViewModel)
+                7 -> AnalyticsTab(adminViewModel)
+                8 -> NonMedicalCheckerScreen()
+                9 -> {
                     val currentUser by adminViewModel.currentAdminState.collectAsState()
                     FormsScreen(
                         userRole = "admin",
@@ -141,7 +141,7 @@ fun AdminDashboardScreen(
                         userName = currentUser?.name ?: ""
                     )
                 }
-                11 -> {
+                10 -> {
                     val currentUser by adminViewModel.currentAdminState.collectAsState()
                     CircularsScreen(
                         userRole = "admin",
@@ -149,23 +149,75 @@ fun AdminDashboardScreen(
                         userName = currentUser?.name ?: ""
                     )
                 }
-                12 -> GraphicsSelectionScreen(navController = navController)
+                11 -> GraphicsSelectionScreen(navController = navController)
             }
         }
     }
 
     if (showProfileDialog) {
+        var isEditingProfile by remember(showProfileDialog, currentAdmin?.uid) { mutableStateOf(false) }
+        var profileName by remember(showProfileDialog, currentAdmin?.uid) { mutableStateOf(currentAdmin?.name.orEmpty()) }
+        var profilePhone by remember(showProfileDialog, currentAdmin?.uid) { mutableStateOf(currentAdmin?.phone.orEmpty()) }
+
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
             title = { Text("My Profile") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     currentAdmin?.let { user ->
-                        InfoRow(label = "Name", value = user.name)
+                        if (isEditingProfile) {
+                            OutlinedTextField(
+                                value = profileName,
+                                onValueChange = { profileName = it },
+                                label = { Text("Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = profilePhone,
+                                onValueChange = { profilePhone = it },
+                                label = { Text("Phone number") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                            ) {
+                                TextButton(onClick = {
+                                    profileName = user.name
+                                    profilePhone = user.phone
+                                    isEditingProfile = false
+                                }) {
+                                    Text("Cancel")
+                                }
+                                Button(onClick = {
+                                    adminViewModel.updateProfileDetails(profileName.trim(), profilePhone.trim())
+                                    isEditingProfile = false
+                                }) {
+                                    Text("Save")
+                                }
+                            }
+                        } else {
+                            InfoRow(label = "Name", value = user.name.ifBlank { "Not set" })
+                            InfoRow(label = "Phone", value = user.phone.ifBlank { "Not set" })
+                            OutlinedButton(
+                                onClick = { isEditingProfile = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.padding(horizontal = 4.dp))
+                                Text("Edit name & phone")
+                            }
+                        }
                         InfoRow(label = "Email", value = user.email)
                         InfoRow(label = "DO Code", value = user.doCode)
                     }
                     GmailImportProfileSection()
+                    ManualPdfImportFallbackSection(onImportApplied = adminViewModel::refreshData)
                 }
             },
             confirmButton = {

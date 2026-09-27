@@ -969,7 +969,12 @@ class FirebaseApi {
     private fun buildCodeVariants(normalizedCode: String): List<String> {
         if (normalizedCode.isBlank()) return emptyList()
         val withLeadingZero = if (normalizedCode.startsWith("0")) normalizedCode else "0$normalizedCode"
-        return listOf(normalizedCode, withLeadingZero).distinct()
+        return listOf(
+            normalizedCode,
+            withLeadingZero,
+            "LIC$normalizedCode",
+            "LIC$withLeadingZero"
+        ).distinct()
     }
 
     private fun normalizeCode(code: String?): String {
@@ -977,6 +982,7 @@ class FirebaseApi {
             .trim()
             .replace(" ", "")
             .uppercase(Locale.ROOT)
+            .removePrefix("LIC")
         if (cleaned.isEmpty()) return ""
         val withoutLeadingZeros = cleaned.trimStart('0')
         return if (withoutLeadingZeros.isNotEmpty()) withoutLeadingZeros else "0"

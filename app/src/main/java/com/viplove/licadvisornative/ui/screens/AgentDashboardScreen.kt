@@ -6,9 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -53,7 +55,6 @@ fun AgentDashboardScreen(
 ) {
     val tabs = listOf(
         stringResource(R.string.my_policies_tab),
-        "PDF Import",
         "ULIP",
         "Data Analysis",
         stringResource(R.string.drafts_tab),
@@ -119,25 +120,23 @@ fun AgentDashboardScreen(
             when (selectedTabIndex) {
                 0 -> AgentPoliciesTab(agentViewModel, agentUiState)
 
-                1 -> PremiumPdfImportScreen(onImportApplied = agentViewModel::refreshData)
-
-                2 -> {
+                1 -> {
                     // Filter the main list to get only ULIP policies
                     val ulipPolicies = agentUiState?.filteredPolicies?.filter { it.isUlip } ?: emptyList()
                     UlipScreen(policies = ulipPolicies)
                 }
 
-                3 -> if (agentUiState != null) {
+                2 -> if (agentUiState != null) {
                     AgentDateAnalysisTab(agentUiState)
                 }
 
-                4 -> if (agentUiState != null) {
+                3 -> if (agentUiState != null) {
                     DraftsTab(navController, agentViewModel, agentUiState)
                 }
 
-                5 -> NonMedicalCheckerScreen()
+                4 -> NonMedicalCheckerScreen()
 
-                6 -> {
+                5 -> {
                     val currentUser = agentUiState?.currentUser
                     FormsScreen(
                         userRole = "advisor",
@@ -146,7 +145,7 @@ fun AgentDashboardScreen(
                     )
                 }
 
-                7 -> GraphicsSelectionScreen(navController = navController)
+                6 -> GraphicsSelectionScreen(navController = navController)
             }
         }
     }
@@ -157,15 +156,67 @@ fun AgentDashboardScreen(
         val currentLocale = context.resources.configuration.locales[0]
         val initialLanguage = if (currentLocale.language == "hi") languages[1] else languages[0]
         var selectedLanguage by remember { mutableStateOf(initialLanguage) }
+        val currentUser = agentUiState?.currentUser
+        var isEditingProfile by remember(showProfileDialog, currentUser?.uid) { mutableStateOf(false) }
+        var profileName by remember(showProfileDialog, currentUser?.uid) { mutableStateOf(currentUser?.name.orEmpty()) }
+        var profilePhone by remember(showProfileDialog, currentUser?.uid) { mutableStateOf(currentUser?.phone.orEmpty()) }
 
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
             title = { Text(stringResource(R.string.my_profile_title)) },
             text = {
-                agentUiState?.currentUser?.let { user ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InfoRow(label = stringResource(R.string.email_label), value = user.email)
-                        InfoRow(label = stringResource(R.string.agency_code_label), value = user.agencyCode)
+                currentUser?.let { user ->
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (isEditingProfile) {
+                            OutlinedTextField(
+                                value = profileName,
+                                onValueChange = { profileName = it },
+                                label = { Text("Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = profilePhone,
+                                onValueChange = { profilePhone = it },
+                                label = { Text("Phone number") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                            ) {
+                                TextButton(onClick = {
+                                    profileName = user.name
+                                    profilePhone = user.phone
+                                    isEditingProfile = false
+                                }) {
+                                    Text("Cancel")
+                                }
+                                Button(onClick = {
+                                    agentViewModel.updateProfileDetails(profileName.trim(), profilePhone.trim())
+                                    isEditingProfile = false
+                                }) {
+                                    Text("Save")
+                                }
+                            }
+                        } else {
+                            InfoRow(label = "Name", value = user.name.ifBlank { "Not set" })
+                            InfoRow(label = "Phone", value = user.phone.ifBlank { "Not set" })
+                            InfoRow(label = stringResource(R.string.email_label), value = user.email)
+                            InfoRow(label = stringResource(R.string.agency_code_label), value = user.agencyCode)
+                            OutlinedButton(
+                                onClick = { isEditingProfile = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.padding(horizontal = 4.dp))
+                                Text("Edit name & phone")
+                            }
+                        }
                         val startDate = user.startDate?.let {
                             SimpleDateFormat("dd MMMM yyyy", Locale.US).format(Date(it))
                         } ?: "Not set by DO"
@@ -200,6 +251,7 @@ fun AgentDashboardScreen(
                         }
 
                         GmailImportProfileSection()
+                        ManualPdfImportFallbackSection(onImportApplied = agentViewModel::refreshData)
                     }
                 }
             },
