@@ -7,6 +7,7 @@ import com.viplove.licadvisornative.util.CrashReporter
 import com.viplove.licadvisornative.util.NotificationHelper
 import com.viplove.licadvisornative.util.RemoteConfigManager
 import com.viplove.licadvisornative.worker.DueDateWorker
+import com.viplove.licadvisornative.worker.GmailImportReminderWorker
 
 class MyApplication : Application() {
     override fun onCreate() {
@@ -27,5 +28,8 @@ class MyApplication : Application() {
 
         // Schedule periodic due date check
         DueDateWorker.schedule(this)
+
+        // Remind advisors/DOs to keep Gmail imports fresh
+        GmailImportReminderWorker.schedule(this)
     }
 }

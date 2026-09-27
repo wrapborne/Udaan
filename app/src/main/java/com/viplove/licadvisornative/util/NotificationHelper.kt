@@ -20,6 +20,9 @@ object NotificationHelper {
     private const val CHANNEL_ID_DUE_DATE = "policy_due_dates"
     private const val CHANNEL_NAME_DUE_DATE = "Policy Due Date Alerts"
     private const val CHANNEL_DESC_DUE_DATE = "Notifications for upcoming policy payment due dates"
+    private const val CHANNEL_ID_GMAIL_IMPORT = "gmail_import_reminders"
+    private const val CHANNEL_NAME_GMAIL_IMPORT = "Gmail Import Reminders"
+    private const val CHANNEL_DESC_GMAIL_IMPORT = "Reminders to update due list and commission bill imports"
     
     /**
      * Creates notification channels for the app.
@@ -35,9 +38,18 @@ object NotificationHelper {
                 description = CHANNEL_DESC_DUE_DATE
                 enableVibration(true)
             }
+            val gmailImportChannel = NotificationChannel(
+                CHANNEL_ID_GMAIL_IMPORT,
+                CHANNEL_NAME_GMAIL_IMPORT,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = CHANNEL_DESC_GMAIL_IMPORT
+                enableVibration(true)
+            }
             
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(dueDateChannel)
+            notificationManager.createNotificationChannel(gmailImportChannel)
         }
     }
     
@@ -98,6 +110,42 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
         
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
+    }
+
+    fun showGmailImportReminder(
+        context: Context,
+        notificationId: Int,
+        title: String,
+        message: String
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                return
+            }
+        }
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID_GMAIL_IMPORT)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
         NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
     

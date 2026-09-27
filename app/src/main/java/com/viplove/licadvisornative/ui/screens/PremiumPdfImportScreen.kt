@@ -1,5 +1,7 @@
 package com.viplove.licadvisornative.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AssistChip
@@ -76,6 +79,29 @@ fun PremiumPdfImportScreen(
         contentPadding = PaddingValues(Dimens.ScreenHPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
     ) {
+        item {
+            SectionCard(title = "Gmail Import Portal") {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
+                    Text(
+                        "Connect Gmail and import LIC due list or commission bill emails from the web portal. Imported data updates this app automatically after refresh.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GMAIL_IMPORT_PORTAL_URL))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.OpenInBrowser, contentDescription = null)
+                        Spacer(Modifier.padding(horizontal = 4.dp))
+                        Text("Open Gmail Import")
+                    }
+                }
+            }
+        }
+
         item {
             SectionCard(title = "PDF Import") {
                 Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterSm)) {
@@ -379,3 +405,5 @@ private fun PremiumYearType.displayName(): String {
 private fun money(value: Double): String {
     return "Rs. ${String.format(Locale.US, "%.2f", value)}"
 }
+
+private const val GMAIL_IMPORT_PORTAL_URL = "https://udaan.viplovesaini.in"
