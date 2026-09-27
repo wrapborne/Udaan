@@ -1,21 +1,24 @@
 import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
+import {initializeApp} from "firebase-admin/app";
+import {getAuth} from "firebase-admin/auth";
+import {DocumentSnapshot, getFirestore} from "firebase-admin/firestore";
 
-admin.initializeApp();
-const db = admin.firestore();
+initializeApp();
+const db = getFirestore();
+const auth = getAuth();
 
 /**
  * Loads the caller profile and verifies it has one of the allowed roles.
  * @param {functions.https.CallableRequest} request Callable request from the
  * authenticated client.
  * @param {string[]} allowedRoles Roles that can proceed with the action.
- * @return {Promise<admin.firestore.DocumentSnapshot>} Caller Firestore
+ * @return {Promise<DocumentSnapshot>} Caller Firestore
  * document snapshot.
  */
 async function requireCallerRole(
   request: functions.https.CallableRequest,
   allowedRoles: string[]
-): Promise<admin.firestore.DocumentSnapshot> {
+): Promise<DocumentSnapshot> {
   const callerUid = request.auth?.uid;
   if (!callerUid) {
     throw new functions.https.HttpsError(
@@ -140,7 +143,7 @@ export const registerNewUser = functions.https.onCall(async (request) => {
     }
 
     const formattedPhoneNumber = `+91${phone}`;
-    const userRecord = await admin.auth().createUser({
+    const userRecord = await auth.createUser({
       email: email,
       password: password,
       displayName: name,
@@ -220,6 +223,6 @@ export const deleteUserAccount = functions.https.onCall(async (request) => {
   }
 
   await targetRef.delete();
-  await admin.auth().deleteUser(targetUid);
+  await auth.deleteUser(targetUid);
   return {message: "User deleted successfully."};
 });
