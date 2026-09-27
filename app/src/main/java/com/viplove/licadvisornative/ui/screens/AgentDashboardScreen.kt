@@ -198,6 +198,8 @@ fun AgentDashboardScreen(
                                 Text(text = language, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
+
+                        GmailImportProfileSection()
                     }
                 }
             },

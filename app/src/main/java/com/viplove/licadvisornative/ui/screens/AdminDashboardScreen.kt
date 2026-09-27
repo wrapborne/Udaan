@@ -60,6 +60,7 @@ fun AdminDashboardScreen(
     adminViewModel: AdminViewModel = viewModel()
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
+    var showProfileDialog by remember { mutableStateOf(false) }
     val tabs = listOf(
         "Proposals",
         "PDF Import",
@@ -76,6 +77,7 @@ fun AdminDashboardScreen(
         "Graphics"
     )
     val context = LocalContext.current
+    val currentAdmin by adminViewModel.currentAdminState.collectAsState()
     val isOnline by remember {
         com.viplove.licadvisornative.util.NetworkMonitor.observeConnectivity(context)
     }.collectAsState(initial = true)
@@ -85,6 +87,9 @@ fun AdminDashboardScreen(
         actions = {
             IconButton(onClick = { adminViewModel.refreshData() }) {
                 Icon(Icons.Default.Refresh, contentDescription = "Refresh data", tint = Color.White)
+            }
+            IconButton(onClick = { showProfileDialog = true }) {
+                Icon(Icons.Filled.AccountCircle, contentDescription = "My profile", tint = Color.White)
             }
             IconButton(onClick = {
                 adminViewModel.logout()
@@ -147,6 +152,28 @@ fun AdminDashboardScreen(
                 12 -> GraphicsSelectionScreen(navController = navController)
             }
         }
+    }
+
+    if (showProfileDialog) {
+        AlertDialog(
+            onDismissRequest = { showProfileDialog = false },
+            title = { Text("My Profile") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    currentAdmin?.let { user ->
+                        InfoRow(label = "Name", value = user.name)
+                        InfoRow(label = "Email", value = user.email)
+                        InfoRow(label = "DO Code", value = user.doCode)
+                    }
+                    GmailImportProfileSection()
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showProfileDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 
