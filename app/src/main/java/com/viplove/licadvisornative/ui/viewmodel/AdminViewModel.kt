@@ -60,6 +60,12 @@ class AdminViewModel : ViewModel() {
         val monthlyBreakdown: List<MonthlyPremium> = emptyList()
     )
 
+    /**
+     * A parsed file waiting for the user to choose Overwrite / Skip Duplicates / Cancel.
+     * Items and duplicates travel together, so the confirm dialog can never see one without the other.
+     */
+    data class PendingUpload<T>(val items: List<T>, val duplicates: List<String>)
+
     enum class SortOrder { ASC, DESC }
     enum class ProposalSortOption { CODE, POLICY_COUNT }
     enum class SummarySortOption { CODE, PREMIUM }
@@ -80,8 +86,7 @@ class AdminViewModel : ViewModel() {
         val availableAppraisalYears: List<String> = listOf("None"),
         val availablePlans: List<String> = listOf("All"),
         val availableModes: List<String> = listOf("All"),
-        val pendingUpload: List<Policy>? = null,
-        val duplicatePolicies: List<String>? = null,
+        val pendingUpload: PendingUpload<Policy>? = null,
         val proposalSortOption: ProposalSortOption = ProposalSortOption.CODE,
         val proposalSortOrder: SortOrder = SortOrder.ASC,
         override val showOnlyLate: Boolean = false,
@@ -96,8 +101,7 @@ class AdminViewModel : ViewModel() {
         val monthlyTotalPremium: Double = 0.0,
         val appraisalYearTotalPremium: Double = 0.0,
         val error: String? = null,
-        val pendingSummaryUpload: List<PremiumSummary>? = null,
-        val duplicateSummaries: List<String>? = null,
+        val pendingSummaryUpload: PendingUpload<PremiumSummary>? = null,
         val summarySortOption: SummarySortOption = SummarySortOption.CODE,
         val summarySortOrder: SortOrder = SortOrder.ASC
     )
@@ -285,7 +289,7 @@ class AdminViewModel : ViewModel() {
             when (val result = FileUploadManager.processProposals(uri, contentResolver, currentAdminId)) {
                 is UploadResult.Success -> fetchMyPolicies((_agentListState.value as? AgentListUiState.Success)?.agents ?: emptyList())
                 is UploadResult.RequiresConfirmation -> _uiState.update {
-                    (it as ProposalsUiState).copy(isLoading = false, pendingUpload = result.pendingItems as? List<Policy>, duplicatePolicies = result.duplicates)
+                    (it as ProposalsUiState).copy(isLoading = false, pendingUpload = PendingUpload(result.pendingItems.filterIsInstance<Policy>(), result.duplicates))
                 }
                 is UploadResult.Error -> _uiState.update { (it as ProposalsUiState).copy(isLoading = false, error = result.message) }
             }
@@ -302,46 +306,62 @@ class AdminViewModel : ViewModel() {
                     fetchMyPolicies((_agentListState.value as? AgentListUiState.Success)?.agents ?: emptyList())
                 }
                 is UploadResult.RequiresConfirmation -> _premiumSummaryUiState.update {
-                    it.copy(isLoading = false, pendingSummaryUpload = result.pendingItems as? List<PremiumSummary>, duplicateSummaries = result.duplicates)
+                    it.copy(isLoading = false, pendingSummaryUpload = PendingUpload(result.pendingItems.filterIsInstance<PremiumSummary>(), result.duplicates))
                 }
                 is UploadResult.Error -> _premiumSummaryUiState.update { it.copy(isLoading = false, error = result.message) }
             }
         }
     }
 
+    /**
+     * Takes the pending upload out of state before writing, so the dialog closes at once and a
+     * second tap on Overwrite/Skip can't start a duplicate upload.
+     */
     fun confirmPolicyUpload(overwrite: Boolean) {
-        val currentState = _uiState.value as ProposalsUiState
+        val adminId = TokenManager.getUserId() ?: return
+        var pending: PendingUpload<Policy>? = null
+        _uiState.update {
+            val state = it as ProposalsUiState
+            pending = state.pendingUpload
+            state.copy(pendingUpload = null, isLoading = state.pendingUpload != null || state.isLoading)
+        }
+        val upload = pending ?: return
         viewModelScope.launch {
             try {
-                val adminId = TokenManager.getUserId() ?: return@launch
-                FileUploadManager.uploadPolicies(currentState.pendingUpload!!, adminId, overwrite, currentState.duplicatePolicies!!)
+                FileUploadManager.uploadPolicies(upload.items, adminId, overwrite, upload.duplicates)
                 fetchMyPolicies((_agentListState.value as? AgentListUiState.Success)?.agents ?: emptyList())
-            } finally {
-                _uiState.update { (it as ProposalsUiState).copy(pendingUpload = null, duplicatePolicies = null) }
+            } catch (e: Exception) {
+                _uiState.update { (it as ProposalsUiState).copy(isLoading = false, error = e.localizedMessage ?: "Upload failed.") }
             }
         }
     }
 
     fun cancelPolicyUpload() {
-        _uiState.update { (it as ProposalsUiState).copy(pendingUpload = null, duplicatePolicies = null, isLoading = false) }
+        _uiState.update { (it as ProposalsUiState).copy(pendingUpload = null, isLoading = false) }
     }
 
+    /** See [confirmPolicyUpload]. */
     fun confirmSummaryUpload(overwrite: Boolean) {
-        val currentState = _premiumSummaryUiState.value
+        val adminId = TokenManager.getUserId() ?: return
+        var pending: PendingUpload<PremiumSummary>? = null
+        _premiumSummaryUiState.update {
+            pending = it.pendingSummaryUpload
+            it.copy(pendingSummaryUpload = null, isLoading = it.pendingSummaryUpload != null || it.isLoading)
+        }
+        val upload = pending ?: return
         viewModelScope.launch {
             try {
-                val adminId = TokenManager.getUserId() ?: return@launch
-                FileUploadManager.uploadConfirmedSummaries(currentState.pendingSummaryUpload!!, adminId, overwrite, currentState.duplicateSummaries!!)
+                FileUploadManager.uploadConfirmedSummaries(upload.items, adminId, overwrite, upload.duplicates)
                 fetchPremiumSummaries()
                 fetchMyPolicies((_agentListState.value as? AgentListUiState.Success)?.agents ?: emptyList())
-            } finally {
-                _premiumSummaryUiState.update { it.copy(pendingSummaryUpload = null, duplicateSummaries = null) }
+            } catch (e: Exception) {
+                _premiumSummaryUiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Upload failed.") }
             }
         }
     }
 
     fun cancelSummaryUpload() {
-        _premiumSummaryUiState.update { it.copy(pendingSummaryUpload = null, duplicateSummaries = null, isLoading = false) }
+        _premiumSummaryUiState.update { it.copy(pendingSummaryUpload = null, isLoading = false) }
     }
 
     fun logout() {

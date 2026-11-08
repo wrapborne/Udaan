@@ -17,13 +17,27 @@ import kotlinx.coroutines.launch
 
 class PremiumPdfImportViewModel : ViewModel() {
 
+    /**
+     * Screen state. [phase] is the single source of truth; the other properties are derived
+     * from it so the screen can't observe impossible combinations (e.g. parsing while applying).
+     */
     data class UiState(
-        val isParsing: Boolean = false,
-        val isApplying: Boolean = false,
-        val parseResult: LicPremiumPdfParseResult? = null,
-        val applyResult: PremiumPdfImportApplyResult? = null,
-        val error: String? = null
-    )
+        val phase: PremiumPdfImportPhase = PremiumPdfImportPhase.Idle
+    ) {
+        val isParsing: Boolean get() = phase is PremiumPdfImportPhase.Parsing
+        val isApplying: Boolean get() = phase is PremiumPdfImportPhase.Applying
+        val canApply: Boolean get() = phase.startApplying() != null
+        val parseResult: LicPremiumPdfParseResult?
+            get() = (phase as? PremiumPdfImportPhase.HasParsed)?.parsed
+        val applyResult: PremiumPdfImportApplyResult?
+            get() = (phase as? PremiumPdfImportPhase.Applied)?.result
+        val error: String?
+            get() = when (phase) {
+                is PremiumPdfImportPhase.ParseFailed -> phase.message
+                is PremiumPdfImportPhase.ApplyFailed -> phase.message
+                else -> null
+            }
+    }
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -31,58 +45,53 @@ class PremiumPdfImportViewModel : ViewModel() {
     private val api = ApiClient.api
 
     fun parsePdf(uri: Uri, contentResolver: ContentResolver) {
+        if (!transition { it.startParsing() }) return
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(isParsing = true, applyResult = null, error = null)
-            }
             val result = LicPremiumPdfParser.parse(uri, contentResolver)
-            _uiState.update {
-                it.copy(
-                    isParsing = false,
-                    parseResult = result,
-                    error = (result as? LicPremiumPdfParseResult.Error)?.message
-                )
-            }
+            transition { it.onParsed(result) }
         }
     }
 
     fun applyCurrentImport() {
-        val currentResult = _uiState.value.parseResult ?: return
+        var applying: PremiumPdfImportPhase.Applying? = null
+        if (!transition { phase -> phase.startApplying().also { applying = it } }) return
+        val parsed = applying?.parsed ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isApplying = true, error = null, applyResult = null) }
             try {
-                val response = when (currentResult) {
-                    is LicPremiumPdfParseResult.PremiumDueList -> {
-                        api.applyPremiumDueImport(currentResult.result)
-                    }
-                    is LicPremiumPdfParseResult.CommissionBill -> {
-                        api.applyCommissionBillImport(currentResult.result)
-                    }
+                val response = when (parsed) {
+                    is LicPremiumPdfParseResult.PremiumDueList -> api.applyPremiumDueImport(parsed.result)
+                    is LicPremiumPdfParseResult.CommissionBill -> api.applyCommissionBillImport(parsed.result)
+                    // Unreachable: HasParsed phases never hold a parse error.
                     is LicPremiumPdfParseResult.Error -> {
-                        _uiState.update { it.copy(isApplying = false, error = currentResult.message) }
+                        transition { it.onApplyFailed(parsed.message) }
                         return@launch
                     }
                 }
 
-                if (response.isSuccessful) {
-                    _uiState.update {
-                        it.copy(isApplying = false, applyResult = response.body())
-                    }
+                val body = response.body()
+                if (response.isSuccessful && body != null) {
+                    transition { it.onApplySucceeded(body) }
                 } else {
-                    _uiState.update {
-                        it.copy(isApplying = false, error = response.errorBody()?.string()?.extractMessage() ?: "Could not apply import.")
-                    }
+                    val message = response.errorBody()?.string()?.extractMessage() ?: "Could not apply import."
+                    transition { it.onApplyFailed(message) }
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isApplying = false, error = e.localizedMessage ?: "Import failed.")
-                }
+                transition { it.onApplyFailed(e.localizedMessage ?: "Import failed.") }
             }
         }
     }
 
     fun clear() {
-        _uiState.value = UiState()
+        transition { it.clear() }
+    }
+
+    /** Atomically applies [step] to the current phase; returns false if the transition isn't allowed. */
+    private inline fun transition(step: (PremiumPdfImportPhase) -> PremiumPdfImportPhase?): Boolean {
+        while (true) {
+            val current = _uiState.value
+            val next = step(current.phase) ?: return false
+            if (_uiState.compareAndSet(current, current.copy(phase = next))) return true
+        }
     }
 
     val premiumDueResult: PremiumDuePdfResult?

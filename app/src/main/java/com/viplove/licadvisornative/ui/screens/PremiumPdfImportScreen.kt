@@ -149,6 +149,7 @@ fun ManualPdfImportFallbackSection(
                 PremiumDueReview(
                     result = result.result,
                     isApplying = state.isApplying,
+                    canApply = state.canApply,
                     onApply = importViewModel::applyCurrentImport
                 )
             }
@@ -156,6 +157,7 @@ fun ManualPdfImportFallbackSection(
                 CommissionBillReview(
                     result = result.result,
                     isApplying = state.isApplying,
+                    canApply = state.canApply,
                     onApply = importViewModel::applyCurrentImport
                 )
             }
@@ -176,6 +178,7 @@ fun ManualPdfImportFallbackSection(
 private fun PremiumDueReview(
     result: PremiumDuePdfResult,
     isApplying: Boolean,
+    canApply: Boolean,
     onApply: () -> Unit
 ) {
     SectionCard(title = "Premium Due List") {
@@ -209,7 +212,7 @@ private fun PremiumDueReview(
             ApplyButton(
                 label = "Confirm Due Import",
                 isApplying = isApplying,
-                enabled = result.rows.isNotEmpty(),
+                enabled = canApply && result.rows.isNotEmpty(),
                 onApply = onApply
             )
         }
@@ -220,6 +223,7 @@ private fun PremiumDueReview(
 private fun CommissionBillReview(
     result: CommissionBillPdfResult,
     isApplying: Boolean,
+    canApply: Boolean,
     onApply: () -> Unit
 ) {
     val paidRows = result.rows.filter { it.status == CommissionRowStatus.PAID }
@@ -259,7 +263,7 @@ private fun CommissionBillReview(
             ApplyButton(
                 label = "Confirm Payment Import",
                 isApplying = isApplying,
-                enabled = result.rows.isNotEmpty(),
+                enabled = canApply && result.rows.isNotEmpty(),
                 onApply = onApply
             )
         }

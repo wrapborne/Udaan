@@ -500,8 +500,8 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
         }
     )
 
-    if (proposalsUiState != null && proposalsUiState.duplicatePolicies != null && proposalsUiState.pendingUpload != null) {
-        val duplicateCount = proposalsUiState.duplicatePolicies!!.size
+    proposalsUiState?.pendingUpload?.let { pending ->
+        val duplicateCount = pending.duplicates.size
         AlertDialog(
             onDismissRequest = { adminViewModel.cancelPolicyUpload() },
             title = { Text("Duplicates Found") },
@@ -815,8 +815,8 @@ fun PremiumSummaryTab(adminViewModel: AdminViewModel) {
         }
     }
 
-    if (summaryState.duplicateSummaries != null && summaryState.pendingSummaryUpload != null) {
-        val duplicateCount = summaryState.duplicateSummaries!!.size
+    summaryState.pendingSummaryUpload?.let { pending ->
+        val duplicateCount = pending.duplicates.size
         AlertDialog(
             onDismissRequest = { adminViewModel.cancelSummaryUpload() },
             title = { Text("Duplicates Found") },
