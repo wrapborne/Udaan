@@ -21,9 +21,11 @@ class NonMedicalCheckerViewModel : ViewModel() {
         val isMinor: Boolean = false,
         val isStudent: Boolean = false,
         val planNumber: String = NonMedicalCheckerLogic.getAvailablePlans().firstOrNull() ?: "",
-        val resultCategory: String? = null,
-        val resultSaLimit: Int? = null
+        val result: Result? = null
     )
+
+    /** Null until the user taps Check; category and limit are always produced together. */
+    data class Result(val category: String, val saLimit: Int)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -66,6 +68,6 @@ class NonMedicalCheckerViewModel : ViewModel() {
             0
         }
 
-        _uiState.update { it.copy(resultCategory = category, resultSaLimit = limit) }
+        _uiState.update { it.copy(result = Result(category, limit)) }
     }
 }

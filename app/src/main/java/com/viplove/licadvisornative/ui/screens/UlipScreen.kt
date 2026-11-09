@@ -496,10 +496,10 @@ fun UlipMaturityCalculatorTab(ulipViewModel: UlipViewModel) {
             Button(onClick = { ulipViewModel.calculateMaturityProjection() }, modifier = Modifier.fillMaxWidth()) { Text("Calculate Projection") }
         }
 
-        if (uiState.projectionResult != null) {
+        uiState.projection?.let { projection ->
             item {
-                Text("Projected Maturity: ${currencyFormat.format(uiState.finalMaturityValue)}", style = MaterialTheme.typography.titleLarge)
-                Text("Net Yield: ${numberFormat.format(uiState.finalNetYield)}%", style = MaterialTheme.typography.titleMedium)
+                Text("Projected Maturity: ${currencyFormat.format(projection.finalMaturityValue)}", style = MaterialTheme.typography.titleLarge)
+                Text("Net Yield: ${numberFormat.format(projection.finalNetYield)}%", style = MaterialTheme.typography.titleMedium)
             }
             item {
                 Row(Modifier.fillMaxWidth()) {
@@ -509,7 +509,7 @@ fun UlipMaturityCalculatorTab(ulipViewModel: UlipViewModel) {
                     ProjectionTableCell(text = "Fund Value", weight = 0.4f, isHeader = true)
                 }
             }
-            items(uiState.projectionResult!!) { result ->
+            items(projection.years) { result ->
                 ProjectionResultRow(result = result)
             }
         }

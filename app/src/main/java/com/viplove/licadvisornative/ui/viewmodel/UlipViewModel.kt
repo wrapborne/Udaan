@@ -37,6 +37,13 @@ class UlipViewModel : ViewModel() {
         "12% (User Fed)" to 12.0
     )
 
+    /** A calculated projection. Always has at least one year, so the final values always exist. */
+    data class Projection(val years: List<UlipProjectionResult>) {
+        init { require(years.isNotEmpty()) }
+        val finalMaturityValue: Double get() = years.last().closingFundValue
+        val finalNetYield: Double get() = years.last().netYield
+    }
+
     data class UlipUiState(
         val searchQuery: String = "",
         val isFetchingAllNavs: Boolean = true, // Used for the spinner
@@ -63,9 +70,7 @@ class UlipViewModel : ViewModel() {
 
         val saMultiplier: Int = 10,
         val sumAssured: Double = 0.0,
-        val projectionResult: List<UlipProjectionResult>? = null,
-        val finalMaturityValue: Double? = null,
-        val finalNetYield: Double? = null,
+        val projection: Projection? = null,
         val isModeSelectionEnabled: Boolean = true
     )
 
@@ -464,10 +469,8 @@ class UlipViewModel : ViewModel() {
             openingFundValue = closingFundValue
         }
 
-        _uiState.update { it.copy(
-            projectionResult = results,
-            finalMaturityValue = results.lastOrNull()?.closingFundValue,
-            finalNetYield = results.lastOrNull()?.netYield
-        ) }
+        // An empty result (e.g. a blank or zero term) clears the projection instead of
+        // leaving the screen with no final values to format.
+        _uiState.update { it.copy(projection = results.takeIf { r -> r.isNotEmpty() }?.let(::Projection)) }
     }
 }

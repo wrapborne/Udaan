@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,16 +54,7 @@ fun AgentDashboardScreen(
     navController: NavController,
     agentViewModel: AgentViewModel = viewModel()
 ) {
-    val tabs = listOf(
-        stringResource(R.string.my_policies_tab),
-        "ULIP",
-        "Data Analysis",
-        stringResource(R.string.drafts_tab),
-        stringResource(R.string.checker_tab),
-        stringResource(R.string.forms_tab),
-        stringResource(R.string.graphics_tab)
-    )
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTab by rememberSaveable { mutableStateOf(AgentTab.POLICIES) }
     val uiState by agentViewModel.uiState.collectAsState()
     val agentUiState = uiState as? AgentViewModel.AgentUiState
 
@@ -109,34 +101,34 @@ fun AgentDashboardScreen(
                 contentPadding = PaddingValues(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
                 horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                itemsIndexed(tabs) { index, title ->
+                items(AgentTab.entries) { tab ->
                     PillChip(
-                        label = title,
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index }
+                        label = tab.label(),
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab }
                     )
                 }
             }
-            when (selectedTabIndex) {
-                0 -> AgentPoliciesTab(agentViewModel, agentUiState)
+            when (selectedTab) {
+                AgentTab.POLICIES -> AgentPoliciesTab(agentViewModel, agentUiState)
 
-                1 -> {
+                AgentTab.ULIP -> {
                     // Filter the main list to get only ULIP policies
                     val ulipPolicies = agentUiState?.filteredPolicies?.filter { it.isUlip } ?: emptyList()
                     UlipScreen(policies = ulipPolicies)
                 }
 
-                2 -> if (agentUiState != null) {
+                AgentTab.DATA_ANALYSIS -> if (agentUiState != null) {
                     AgentDateAnalysisTab(agentUiState)
                 }
 
-                3 -> if (agentUiState != null) {
+                AgentTab.DRAFTS -> if (agentUiState != null) {
                     DraftsTab(navController, agentViewModel, agentUiState)
                 }
 
-                4 -> NonMedicalCheckerScreen()
+                AgentTab.CHECKER -> NonMedicalCheckerScreen()
 
-                5 -> {
+                AgentTab.FORMS -> {
                     val currentUser = agentUiState?.currentUser
                     FormsScreen(
                         userRole = "advisor",
@@ -145,7 +137,7 @@ fun AgentDashboardScreen(
                     )
                 }
 
-                6 -> GraphicsSelectionScreen(navController = navController)
+                AgentTab.GRAPHICS -> GraphicsSelectionScreen(navController = navController)
             }
         }
     }
@@ -1176,4 +1168,18 @@ fun formatPremium(premium: Long): String {
         premium >= 1000 -> "%.2f K".format(premium / 1000.0)
         else -> premium.toString()
     }
+}
+
+/** Agent dashboard tabs, in display order. Saved across navigation and rotation. */
+private enum class AgentTab { POLICIES, ULIP, DATA_ANALYSIS, DRAFTS, CHECKER, FORMS, GRAPHICS }
+
+@Composable
+private fun AgentTab.label(): String = when (this) {
+    AgentTab.POLICIES -> stringResource(R.string.my_policies_tab)
+    AgentTab.ULIP -> "ULIP"
+    AgentTab.DATA_ANALYSIS -> "Data Analysis"
+    AgentTab.DRAFTS -> stringResource(R.string.drafts_tab)
+    AgentTab.CHECKER -> stringResource(R.string.checker_tab)
+    AgentTab.FORMS -> stringResource(R.string.forms_tab)
+    AgentTab.GRAPHICS -> stringResource(R.string.graphics_tab)
 }

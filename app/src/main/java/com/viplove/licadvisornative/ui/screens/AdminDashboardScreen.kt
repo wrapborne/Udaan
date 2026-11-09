@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,22 +62,8 @@ fun AdminDashboardScreen(
     navController: NavController,
     adminViewModel: AdminViewModel = viewModel()
 ) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTab by rememberSaveable { mutableStateOf(AdminTab.PROPOSALS) }
     var showProfileDialog by remember { mutableStateOf(false) }
-    val tabs = listOf(
-        "Proposals",
-        "ULIP",
-        "Data Analysis",
-        "Premium Summaries",
-        "Performance",
-        "Advisor Management",
-        "Leads",
-        "Analytics",
-        "Checker",
-        "Forms",
-        "Circulars",
-        "Graphics"
-    )
     val context = LocalContext.current
     val currentAdmin by adminViewModel.currentAdminState.collectAsState()
     val isOnline by remember {
@@ -106,34 +93,34 @@ fun AdminDashboardScreen(
                 contentPadding = PaddingValues(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
                 horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                itemsIndexed(tabs) { index, title ->
+                items(AdminTab.entries) { tab ->
                     PillChip(
-                        label = title,
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index }
+                        label = tab.label(),
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab }
                     )
                 }
             }
-            when (selectedTabIndex) {
-                0 -> ProposalsTab(adminViewModel)
-                1 -> {
+            when (selectedTab) {
+                AdminTab.PROPOSALS -> ProposalsTab(adminViewModel)
+                AdminTab.ULIP -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
                     val proposalsUiState = proposalsState as? AdminViewModel.ProposalsUiState
                     val ulipPolicies = proposalsUiState?.filteredPolicies?.filter { it.isUlip } ?: emptyList()
                     UlipScreen(policies = ulipPolicies)
                 }
-                2 -> AdminDateAnalysisTab(adminViewModel)
-                3 -> PremiumSummaryTab(adminViewModel)
-                4 -> {
+                AdminTab.DATA_ANALYSIS -> AdminDateAnalysisTab(adminViewModel)
+                AdminTab.PREMIUM_SUMMARIES -> PremiumSummaryTab(adminViewModel)
+                AdminTab.PERFORMANCE -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
                     val policies = (proposalsState as? AdminViewModel.ProposalsUiState)?.allPolicies ?: emptyList()
                     AgentPerformanceTab(policies = policies)
                 }
-                5 -> AdvisorManagementTab(adminViewModel)
-                6 -> LeadsTab(navController, adminViewModel)
-                7 -> AnalyticsTab(adminViewModel)
-                8 -> NonMedicalCheckerScreen()
-                9 -> {
+                AdminTab.ADVISOR_MANAGEMENT -> AdvisorManagementTab(adminViewModel)
+                AdminTab.LEADS -> LeadsTab(navController, adminViewModel)
+                AdminTab.ANALYTICS -> AnalyticsTab(adminViewModel)
+                AdminTab.CHECKER -> NonMedicalCheckerScreen()
+                AdminTab.FORMS -> {
                     val currentUser by adminViewModel.currentAdminState.collectAsState()
                     FormsScreen(
                         userRole = "admin",
@@ -141,7 +128,7 @@ fun AdminDashboardScreen(
                         userName = currentUser?.name ?: ""
                     )
                 }
-                10 -> {
+                AdminTab.CIRCULARS -> {
                     val currentUser by adminViewModel.currentAdminState.collectAsState()
                     CircularsScreen(
                         userRole = "admin",
@@ -149,7 +136,7 @@ fun AdminDashboardScreen(
                         userName = currentUser?.name ?: ""
                     )
                 }
-                11 -> GraphicsSelectionScreen(navController = navController)
+                AdminTab.GRAPHICS -> GraphicsSelectionScreen(navController = navController)
             }
         }
     }
@@ -483,7 +470,7 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
     LaunchedEffect(proposalsUiState?.error) {
         proposalsUiState?.error?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            // Optionally reset the error in the viewmodel
+            adminViewModel.onProposalsErrorShown()
         }
     }
 
@@ -1958,4 +1945,23 @@ fun AgentPeriodComparisonCard(
             }
         }
     }
+}
+
+/** Admin dashboard tabs, in display order. Saved across navigation and rotation. */
+private enum class AdminTab(val title: String) {
+    PROPOSALS("Proposals"),
+    ULIP("ULIP"),
+    DATA_ANALYSIS("Data Analysis"),
+    PREMIUM_SUMMARIES("Premium Summaries"),
+    PERFORMANCE("Performance"),
+    ADVISOR_MANAGEMENT("Advisor Management"),
+    LEADS("Leads"),
+    ANALYTICS("Analytics"),
+    CHECKER("Checker"),
+    FORMS("Forms"),
+    CIRCULARS("Circulars"),
+    GRAPHICS("Graphics");
+
+    @Composable
+    fun label(): String = title
 }

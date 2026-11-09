@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,9 +36,7 @@ fun SuperadminDashboardScreen(
     val context = LocalContext.current
     val uiState by superadminViewModel.uiState.collectAsState()
     val currentUser by superadminViewModel.currentUser.collectAsState()
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    // --- UPDATED: Added "Forms" and "Circulars" tabs ---
-    val tabs = listOf("Admin Management", "Graphics", "ULIP Plans", "Forms", "Circulars")
+    var selectedTab by rememberSaveable { mutableStateOf(SuperadminTab.ADMIN_MANAGEMENT) }
 
     AppScaffold(
         title = "LIC Udaan · Superadmin",
@@ -55,27 +54,27 @@ fun SuperadminDashboardScreen(
                 contentPadding = PaddingValues(horizontal = Dimens.ScreenHPadding, vertical = Dimens.GutterSm),
                 horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm)
             ) {
-                itemsIndexed(tabs) { index, title ->
+                items(SuperadminTab.entries) { tab ->
                     PillChip(
-                        label = title,
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index }
+                        label = tab.label(),
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab }
                     )
                 }
             }
             // --- UPDATED: 'when' block to show new screen ---
-            when (selectedTabIndex) {
-                0 -> AdminManagementTab(uiState, superadminViewModel)
-                1 -> GraphicsManagementScreen()
-                2 -> UlipPlanManagementScreen() // New screen for managing ULIPs
-                3 -> {
+            when (selectedTab) {
+                SuperadminTab.ADMIN_MANAGEMENT -> AdminManagementTab(uiState, superadminViewModel)
+                SuperadminTab.GRAPHICS -> GraphicsManagementScreen()
+                SuperadminTab.ULIP_PLANS -> UlipPlanManagementScreen() // New screen for managing ULIPs
+                SuperadminTab.FORMS -> {
                     FormsScreen(
                         userRole = "superadmin",
                         userEmail = currentUser?.email ?: "",
                         userName = currentUser?.name ?: ""
                     )
                 }
-                4 -> {
+                SuperadminTab.CIRCULARS -> {
                     CircularsScreen(
                         userRole = "superadmin",
                         userEmail = currentUser?.email ?: "",
@@ -208,4 +207,16 @@ fun AdminItemCard(user: User, isPending: Boolean, onApproveClick: (String) -> Un
             }
         }
     }
+}
+
+/** Superadmin dashboard tabs, in display order. Saved across navigation and rotation. */
+private enum class SuperadminTab(val title: String) {
+    ADMIN_MANAGEMENT("Admin Management"),
+    GRAPHICS("Graphics"),
+    ULIP_PLANS("ULIP Plans"),
+    FORMS("Forms"),
+    CIRCULARS("Circulars");
+
+    @Composable
+    fun label(): String = title
 }

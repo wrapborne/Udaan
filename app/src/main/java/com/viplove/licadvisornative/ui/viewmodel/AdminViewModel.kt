@@ -336,6 +336,11 @@ class AdminViewModel : ViewModel() {
         }
     }
 
+    /** Clears a shown error so the same message toasts again if it happens again. */
+    fun onProposalsErrorShown() {
+        _uiState.update { (it as ProposalsUiState).copy(error = null) }
+    }
+
     fun cancelPolicyUpload() {
         _uiState.update { (it as ProposalsUiState).copy(pendingUpload = null, isLoading = false) }
     }

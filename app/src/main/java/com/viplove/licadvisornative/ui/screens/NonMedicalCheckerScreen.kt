@@ -136,11 +136,11 @@ fun NonMedicalCheckerScreen(
             }
         }
 
-        uiState.resultCategory?.let { category ->
+        uiState.result?.let { result ->
             item {
                 CheckerResultCard(
-                    category = category,
-                    saLimit = uiState.resultSaLimit
+                    category = result.category,
+                    saLimit = result.saLimit
                 )
             }
         }

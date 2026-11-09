@@ -28,6 +28,10 @@ Reference implementation: `ui/viewmodel/PremiumPdfImportPhase.kt` and its test,
 | `PremiumPdfImportViewModel` | `isParsing`, `isApplying`, `parseResult`, `applyResult`, `error` | `PremiumPdfImportPhase`: `Idle → Parsing → Reviewing → Applying → Applied`, plus `ParseFailed` / `ApplyFailed` (retryable) | After a successful import, the Apply button stayed enabled, so the same PDF could be written to Firestore twice. A successful response with no body left the screen showing nothing. |
 | `AdminViewModel` proposal upload | `pendingUpload: List<Policy>?` + `duplicatePolicies: List<String>?`, read with `!!` | `pendingUpload: PendingUpload<Policy>?` | The duplicates dialog stayed open and tappable during the upload, so a double tap uploaded twice. An exception during the upload crashed the app instead of showing an error. |
 | `AdminViewModel` premium summary upload | `pendingSummaryUpload` + `duplicateSummaries`, read with `!!` | `pendingSummaryUpload: PendingUpload<PremiumSummary>?` | Same as above. |
+| `UlipViewModel.UlipUiState` (calculator) | `projectionResult`, `finalMaturityValue`, `finalNetYield` | `projection: Projection?`, which always has at least one year | Calculating with a blank or zero term (plan 867, or any plan once a sum assured is set) crashed the app while formatting a null maturity value. |
+| `NonMedicalCheckerViewModel.UiState` | `resultCategory`, `resultSaLimit` | `result: Result?` | None; the pair is now one value. |
+| Agent, Admin and Superadmin dashboards | `selectedTabIndex: Int` in `remember`, `when (index) { 0 -> … }` | `AgentTab` / `AdminTab` / `SuperadminTab` enums in `rememberSaveable` | The selected tab reset to the first tab after opening something (e.g. a draft) and pressing Back, and on screen rotation. |
+| `AdminViewModel` proposals error | `error` never cleared after its toast | `onProposalsErrorShown()` clears it | A second identical error (e.g. two network failures in a row) showed no toast. |
 
 ## Already explicit (good examples)
 
@@ -43,14 +47,11 @@ large screens with no test coverage for little gain. Convert them when you next 
 
 | Where | Fields | Notes / suggested shape |
 |---|---|---|
-| `AgentViewModel.AgentUiState`, `AdminViewModel.ProposalsUiState`, `PremiumSummaryUiState` | `isLoading`, `error` + data | Loading while still showing the previous data is intended (refresh), so a single sealed type would lose it. Fine as is. |
+| `AgentViewModel.AgentUiState`, `AdminViewModel.ProposalsUiState`, `PremiumSummaryUiState` | `isLoading`, `error` + data | Loading while still showing the previous data is intended (refresh), so a single sealed type would lose it. Fine as is. `PremiumSummaryUiState.error` is also shown inline, so it isn't cleared after its toast. |
 | `GmailImportStatusViewModel.UiState` | `isLoading`, `items`, `error` | Same pattern as above; fine. |
 | `UlipPlanViewModel.UlipPlanUiState` | `isLoading`, `error`, `planNumbers` | Small `Loading / Loaded / Failed` candidate. |
-| `GraphicsViewModel.GraphicsUiState` | `isLoading`, `isUploading`, `error`, `selectedImageUri` | Two independent machines (fetch and upload) share one `error`, so an upload error can hide or overwrite a load error. Split into `load` and `upload` sub-states. |
+| `GraphicsViewModel.GraphicsUiState` | `isLoading`, `isUploading`, `error`, `selectedImageUri` | Two independent machines (fetch and upload) share one `error`, which is never cleared, so a repeated error doesn't toast again. Template and footer uploads also share `selectedImageUri`. The management screen is switched off (`isFeatureEnabled = false`), so this was left until it's turned on. |
 | `GraphicsEditorViewModel.EditorUiState` | `isLoading`, `isUploading`, `error`, `user` | Same split as `GraphicsUiState`. |
 | `DataCollectionViewModel.UiState` | `isSaving`, `error`, `isNewDraft`, `isReadOnly`, `currentStepIndex` / `totalSteps` | Wizard plus save status. `isReadOnly` and `isNewDraft` are a mode (`New`, `EditDraft`, `ReadOnly`). |
 | `UlipViewModel.UlipUiState` (NAV list) | `isFetchingAllNavs`, `navListError`, `cacheInitialized`, `filtersInitialized` | Fetch lifecycle spread over four flags. |
-| `UlipViewModel.UlipUiState` (calculator) | `projectionResult`, `finalMaturityValue`, `finalNetYield` | Always set together (`UlipViewModel.kt`, `calculateMaturityProjection`): one nullable `Projection` data class. |
-| `NonMedicalCheckerViewModel.UiState` | `resultCategory`, `resultSaLimit` | Always set together: one nullable result data class. |
-| Dashboard screens | `selectedTabIndex: Int` with `when (index) { 0 -> … 7 -> … }` | Magic indices. A tab enum would make reordering tabs safe. |
 | `AdminDashboardScreen` (29), `AgentDashboardScreen` (23), `UploadDocumentDialog` (11), `RegistrationScreen` (10) | `remember { mutableStateOf(...) }` dialog/expansion flags | Mostly independent toggles. Several "show dialog X" flags that can't be on at the same time are candidates for one `ActiveDialog?` value. |
