@@ -6,4 +6,7 @@
     <cache-path
         name="shared_pdfs"
         path="shared_pdfs/" />
+    <cache-path
+        name="shared_graphics"
+        path="shared_graphics/" />
 </paths>

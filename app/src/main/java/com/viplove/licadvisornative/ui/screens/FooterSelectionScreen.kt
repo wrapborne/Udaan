@@ -25,7 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +63,20 @@ fun FooterSelectionScreen(
 ) {
     val uiState by graphicsViewModel.uiState.collectAsState()
     var selectedFooter by remember(uiState.footers) { mutableStateOf(uiState.footers.firstOrNull()) }
+    val context = LocalContext.current
+
+    LaunchedEffect(graphicsViewModel) {
+        graphicsViewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    }
+
+    // With no footers available the graphic is made without one, rather than leaving Continue dead.
+    fun continueToEditor() {
+        val footerUrl = selectedFooter?.imageUrl
+        if (footerUrl == null && uiState.footers.isNotEmpty()) return
+        val encodedMainUrl = URLEncoder.encode(mainImageUrl, StandardCharsets.UTF_8.toString())
+        val encodedFooterUrl = URLEncoder.encode(footerUrl.orEmpty(), StandardCharsets.UTF_8.toString())
+        navController.navigate("graphics_editor/$templateId?mainImageUrl=$encodedMainUrl&footerImageUrl=$encodedFooterUrl")
+    }
 
     Scaffold(
         topBar = {
@@ -75,14 +92,8 @@ fun FooterSelectionScreen(
         bottomBar = {
             BottomActionBar(
                 onBack = { navController.popBackStack() },
-                onPrimary = {
-                    selectedFooter?.let { footer ->
-                        val encodedMainUrl = URLEncoder.encode(mainImageUrl, StandardCharsets.UTF_8.toString())
-                        val encodedFooterUrl = URLEncoder.encode(footer.imageUrl, StandardCharsets.UTF_8.toString())
-                        navController.navigate("graphics_editor/$templateId?mainImageUrl=$encodedMainUrl&footerImageUrl=$encodedFooterUrl")
-                    }
-                },
-                primaryLabel = "Continue"
+                onPrimary = ::continueToEditor,
+                primaryLabel = if (uiState.footers.isEmpty() && !uiState.isLoading) "Continue without footer" else "Continue"
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -125,7 +136,7 @@ fun FooterSelectionScreen(
                 EmptyState(
                     icon = Icons.Filled.Image,
                     title = "No footers",
-                    message = "No footer styles are available yet.",
+                    message = "No footer styles are available yet. You can continue without one.",
                     modifier = Modifier.weight(1f)
                 )
             } else {

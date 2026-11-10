@@ -48,14 +48,12 @@ fun GraphicsSelectionScreen(
     val uiState by graphicsViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-        }
+    LaunchedEffect(graphicsViewModel) {
+        graphicsViewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
     }
 
     when {
-        uiState.isLoading -> {
+        uiState.isLoading && uiState.templates.isEmpty() -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }

@@ -10,6 +10,7 @@ import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.ktx.storage
 import com.viplove.licadvisornative.model.CommissionBillPdfResult
 import com.viplove.licadvisornative.model.CommissionRowStatus
@@ -683,7 +684,7 @@ class FirebaseApi {
     ): Response<ApiGraphicsTemplate> {
         val title = name.readUtf8()
         val role = visibleToRole.readUtf8()
-        val upload = uploadAsset("graphics/templates", image.bytes(), image.extensionOrDefault("jpg"))
+        val upload = uploadAsset("graphics/templates", image.bytes(), image.extensionOrDefault("jpg"), image.imageContentType())
         val ref = firestore.collection("graphic_templates").document()
         val createdAt = System.currentTimeMillis().toString()
         ref.set(
@@ -715,7 +716,7 @@ class FirebaseApi {
         image: MultipartBody.Part,
         visibleToRole: RequestBody
     ): Response<ApiGraphicsFooter> {
-        val upload = uploadAsset("graphics/footers", image.bytes(), image.extensionOrDefault("png"))
+        val upload = uploadAsset("graphics/footers", image.bytes(), image.extensionOrDefault("png"), image.imageContentType())
         val ref = firestore.collection("graphic_footers").document()
         val createdAt = System.currentTimeMillis().toString()
         ref.set(
@@ -1023,11 +1024,20 @@ class FirebaseApi {
         return if (withoutLeadingZeros.isNotEmpty()) withoutLeadingZeros else "0"
     }
 
-    private suspend fun uploadAsset(folder: String, bytes: ByteArray, extension: String): AssetUpload {
+    private suspend fun uploadAsset(
+        folder: String,
+        bytes: ByteArray,
+        extension: String,
+        contentType: String? = null
+    ): AssetUpload {
         val fileName = "${UUID.randomUUID()}.$extension"
         val path = "$folder/$fileName"
         val ref = storage.reference.child(path)
-        ref.putBytes(bytes).await()
+        if (contentType != null) {
+            ref.putBytes(bytes, StorageMetadata.Builder().setContentType(contentType).build()).await()
+        } else {
+            ref.putBytes(bytes).await()
+        }
         val url = ref.downloadUrl.await().toString()
         return AssetUpload(url = url, path = path, fileName = fileName)
     }
@@ -1229,6 +1239,10 @@ class FirebaseApi {
         body.writeTo(buffer)
         return buffer.readByteArray()
     }
+
+    /** The part's image MIME type, so stored graphics open correctly in browsers and share sheets. */
+    private fun MultipartBody.Part.imageContentType(): String? =
+        body.contentType()?.toString()?.takeIf { it.startsWith("image/") }
 
     private fun MultipartBody.Part.extensionOrDefault(default: String): String {
         val contentDisposition = headers?.get("Content-Disposition").orEmpty()

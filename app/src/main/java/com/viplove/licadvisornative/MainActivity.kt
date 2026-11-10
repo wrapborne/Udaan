@@ -58,8 +58,6 @@ import com.viplove.licadvisornative.ui.screens.*
 import com.viplove.licadvisornative.ui.theme.LICAdvisorNativeTheme
 import com.viplove.licadvisornative.ui.viewmodel.LoginViewModel
 import com.viplove.licadvisornative.util.CrashReporter
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 
 private const val TAG = "LIC_ADVISOR_DEBUG"
 
@@ -275,12 +273,7 @@ fun AppNavigator() {
             val imageUrl = backStackEntry.arguments?.getString("imageUrl") ?: ""
             Log.d(TAG, "AppNavigator: Navigated to 'graphics_footer_selection'. TemplateId: $templateId, Raw imageUrl: $imageUrl")
 
-            val decodedUrl = try {
-                URLDecoder.decode(imageUrl, StandardCharsets.UTF_8.toString())
-            } catch (e: Exception) {
-                Log.e(TAG, "AppNavigator: URL decoding failed for imageUrl: '$imageUrl'", e)
-                ""
-            }
+            val decodedUrl = com.viplove.licadvisornative.util.NavArgs.decodeUrl(imageUrl)
 
 
             Log.d(TAG, "AppNavigator: Decoded URL is '$decodedUrl'")
