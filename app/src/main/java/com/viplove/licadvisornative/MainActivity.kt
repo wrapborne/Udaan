@@ -9,6 +9,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -44,7 +47,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.viplove.licadvisornative.network.ApiClient
 import com.viplove.licadvisornative.network.TokenManager
 import com.viplove.licadvisornative.ui.components.BrandLogo
@@ -60,11 +62,12 @@ import com.viplove.licadvisornative.ui.viewmodel.LoginViewModel
 import com.viplove.licadvisornative.util.CrashReporter
 
 private const val TAG = "LIC_ADVISOR_DEBUG"
+private const val SCREEN_FADE_IN_MS = 180
+private const val SCREEN_FADE_OUT_MS = 120
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PDFBoxResourceLoader.init(applicationContext)
         Log.d(TAG, "MainActivity onCreate")
         setContent {
             LICAdvisorNativeTheme {
@@ -229,7 +232,15 @@ fun AppNavigator() {
         return
     }
 
-    NavHost(navController = navController, startDestination = "splash") {
+    // Short fades instead of the library's 700 ms default, so moving between screens feels quick.
+    NavHost(
+        navController = navController,
+        startDestination = "splash",
+        enterTransition = { fadeIn(tween(SCREEN_FADE_IN_MS)) },
+        exitTransition = { fadeOut(tween(SCREEN_FADE_OUT_MS)) },
+        popEnterTransition = { fadeIn(tween(SCREEN_FADE_IN_MS)) },
+        popExitTransition = { fadeOut(tween(SCREEN_FADE_OUT_MS)) }
+    ) {
         composable("splash") { SplashScreen(navController) }
         composable("login") { LoginScreen(navController = navController) }
         composable("register") { RegistrationScreen(navController = navController) }

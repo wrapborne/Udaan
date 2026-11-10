@@ -20,6 +20,11 @@ import com.viplove.licadvisornative.util.FileUploadManager
 import com.viplove.licadvisornative.util.PdfGenerator
 import com.viplove.licadvisornative.util.PolicyFilter
 import com.viplove.licadvisornative.util.UploadResult
+import com.google.firebase.firestore.Source
+import com.viplove.licadvisornative.network.ApiPolicy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -147,10 +152,16 @@ class AdminViewModel : ViewModel() {
         }
     }
 
+    private var filterJob: Job? = null
+
+    /** Filters off the main thread. A newer call cancels an older one, so the latest filters win. */
     private fun applyFilters() {
-        val currentState = _uiState.value as ProposalsUiState
-        val filtered = PolicyFilter.getFilteredPolicies(currentState.allPolicies, currentState)
-        _uiState.update { (it as ProposalsUiState).copy(filteredPolicies = filtered) }
+        filterJob?.cancel()
+        filterJob = viewModelScope.launch {
+            val snapshot = _uiState.value as ProposalsUiState
+            val filtered = withContext(Dispatchers.Default) { PolicyFilter.getFilteredPolicies(snapshot.allPolicies, snapshot) }
+            _uiState.update { (it as ProposalsUiState).copy(filteredPolicies = filtered) }
+        }
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -403,17 +414,18 @@ class AdminViewModel : ViewModel() {
     private fun fetchMyPolicies(agents: List<User>) {
         viewModelScope.launch {
             _uiState.update { (it as ProposalsUiState).copy(isLoading = true) }
+            // Show the copy already on the phone at once; the server copy replaces it below.
+            if ((_uiState.value as ProposalsUiState).allPolicies.isEmpty()) {
+                val cached = runCatching { api.getPolicies(source = Source.CACHE) }.getOrNull()
+                val cachedBody = cached?.body()
+                if (cached?.isSuccessful == true && !cachedBody.isNullOrEmpty()) {
+                    showPolicies(cachedBody, agents, stillLoading = true)
+                }
+            }
             try {
                 val response = api.getPolicies()
                 if (response.isSuccessful) {
-                    val policyList = response.body()?.map { it.toPolicy() } ?: emptyList()
-                    calculateAnalytics(policyList, agents)
-                    val plans = PolicyFilter.generatePlanOptions(policyList)
-                    val modes = PolicyFilter.generateModeOptions(policyList)
-                    _uiState.update {
-                        (it as ProposalsUiState).copy(isLoading = false, allPolicies = policyList, availablePlans = plans, availableModes = modes)
-                    }
-                    applyFilters()
+                    showPolicies(response.body().orEmpty(), agents, stillLoading = false)
                 } else {
                     _uiState.update { (it as ProposalsUiState).copy(isLoading = false, error = "Failed to load policies.") }
                 }
@@ -457,6 +469,18 @@ class AdminViewModel : ViewModel() {
                 _leadsUiState.value = LeadsUiState.Error("Network error loading leads.")
             }
         }
+    }
+
+    private suspend fun showPolicies(apiPolicies: List<ApiPolicy>, agents: List<User>, stillLoading: Boolean) {
+        val prepared = withContext(Dispatchers.Default) {
+            val policyList = apiPolicies.map { it.toPolicy() }
+            calculateAnalytics(policyList, agents)
+            Triple(policyList, PolicyFilter.generatePlanOptions(policyList), PolicyFilter.generateModeOptions(policyList))
+        }
+        _uiState.update {
+            (it as ProposalsUiState).copy(isLoading = stillLoading, allPolicies = prepared.first, availablePlans = prepared.second, availableModes = prepared.third)
+        }
+        applyFilters()
     }
 
     private fun calculateAnalytics(policies: List<Policy>, agents: List<User>) {

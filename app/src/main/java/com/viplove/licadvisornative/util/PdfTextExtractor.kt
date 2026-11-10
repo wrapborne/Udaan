@@ -2,7 +2,6 @@ package com.viplove.licadvisornative.util
 
 import android.content.Context
 import android.net.Uri
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +15,8 @@ class PdfTextExtractor(private val context: Context) {
 
     init {
         // Initialize PDFBox
-        PDFBoxResourceLoader.init(context)
+        PdfBoxInitializer.warmUp(context)
+        PdfBoxInitializer.await()
     }
 
     /**

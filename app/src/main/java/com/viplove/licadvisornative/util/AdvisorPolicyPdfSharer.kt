@@ -58,6 +58,7 @@ object AdvisorPolicyPdfSharer {
         val safeCode = advisorCode.ifBlank { "advisor" }.replace(Regex("[^A-Za-z0-9_-]"), "_")
         val file = File(shareDir, "advisor_policy_details_${safeCode}_${fileDateFormat.format(Date())}.pdf")
 
+        PdfBoxInitializer.await()
         PDDocument().use { document ->
             var page = addLandscapePage(document)
             var content = PDPageContentStream(document, page)

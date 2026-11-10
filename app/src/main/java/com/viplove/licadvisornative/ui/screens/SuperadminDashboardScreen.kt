@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -63,7 +65,13 @@ fun SuperadminDashboardScreen(
                 }
             }
             // --- UPDATED: 'when' block to show new screen ---
-            when (selectedTab) {
+            Crossfade(
+                targetState = selectedTab,
+                modifier = Modifier.fillMaxSize(),
+                animationSpec = tween(TAB_FADE_MS),
+                label = "dashboardTab"
+            ) { tab ->
+            when (tab) {
                 SuperadminTab.ADMIN_MANAGEMENT -> AdminManagementTab(uiState, superadminViewModel)
                 SuperadminTab.GRAPHICS -> GraphicsManagementScreen()
                 SuperadminTab.ULIP_PLANS -> UlipPlanManagementScreen() // New screen for managing ULIPs
@@ -81,6 +89,7 @@ fun SuperadminDashboardScreen(
                         userName = currentUser?.name ?: ""
                     )
                 }
+            }
             }
         }
     }

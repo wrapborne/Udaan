@@ -5,6 +5,7 @@ import com.viplove.licadvisornative.firebase.FirebaseBootstrap
 import com.viplove.licadvisornative.network.TokenManager
 import com.viplove.licadvisornative.util.CrashReporter
 import com.viplove.licadvisornative.util.NotificationHelper
+import com.viplove.licadvisornative.util.PdfBoxInitializer
 import com.viplove.licadvisornative.util.RemoteConfigManager
 import com.viplove.licadvisornative.worker.DueDateWorker
 import com.viplove.licadvisornative.worker.GmailImportReminderWorker
@@ -16,6 +17,9 @@ class MyApplication : Application() {
         CrashReporter.install(this)
 
         FirebaseBootstrap.initialize(this)
+
+        // PDF support loads in the background; see PdfBoxInitializer
+        PdfBoxInitializer.warmUp(this)
 
         // Initialize token manager
         TokenManager.init(this)

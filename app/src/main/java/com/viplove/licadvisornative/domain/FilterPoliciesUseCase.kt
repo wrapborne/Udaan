@@ -38,6 +38,32 @@ class FilterPoliciesUseCase {
     fun execute(params: Params): List<Policy> {
         val userStartDate = params.user?.startDate
 
+        // The date range depends only on the filters, so work it out once, not once per policy.
+        var finalStart: Long? = params.startDate
+        var finalEnd: Long? = params.endDate?.plus(86400000) // Include the full end day
+
+        // Override date range if an appraisal year is selected
+        if (params.selectedAppraisalYear != "None") {
+            val appraisalBounds = parseAppraisalYearString(params.selectedAppraisalYear, userStartDate)
+            finalStart = appraisalBounds.first
+            finalEnd = appraisalBounds.second
+        }
+
+        // Further refine date range if a financial year is also selected
+        if (params.selectedFinancialYear != "None") {
+            val financialBounds = parseFinancialYearString(params.selectedFinancialYear)
+            if (finalStart != null && finalEnd != null && financialBounds.first != null && financialBounds.second != null) {
+                // Find the intersection of the two date ranges
+                finalStart = max(finalStart, financialBounds.first!!)
+                finalEnd = min(finalEnd, financialBounds.second!!)
+            } else {
+                finalStart = financialBounds.first
+                finalEnd = financialBounds.second
+            }
+        }
+        val rangeStart = finalStart
+        val rangeEnd = finalEnd
+
         return params.allPolicies.filter { policy ->
             // Match against search query (policy number, plan, or name)
             val searchMatch = policy.policyNumber.contains(params.searchQuery, ignoreCase = true) ||
@@ -54,48 +80,17 @@ class FilterPoliciesUseCase {
                 else -> policy.mode == params.selectedMode
             }
 
-            // Determine the final date range based on user selections
-            var finalStart: Long? = params.startDate
-            var finalEnd: Long? = params.endDate?.plus(86400000) // Include the full end day
-
-            // Override date range if an appraisal year is selected
-            if (params.selectedAppraisalYear != "None") {
-                val appraisalBounds = parseAppraisalYearString(params.selectedAppraisalYear, userStartDate)
-                finalStart = appraisalBounds.first
-                finalEnd = appraisalBounds.second
-            }
-
-            // Further refine date range if a financial year is also selected
-            if (params.selectedFinancialYear != "None") {
-                val financialBounds = parseFinancialYearString(params.selectedFinancialYear)
-                if (finalStart != null && finalEnd != null && financialBounds.first != null && financialBounds.second != null) {
-                    // Find the intersection of the two date ranges
-                    finalStart = max(finalStart, financialBounds.first!!)
-                    finalEnd = min(finalEnd, financialBounds.second!!)
-                } else {
-                    finalStart = financialBounds.first
-                    finalEnd = financialBounds.second
-                }
-            }
-
             // Check if the policy's date of commencement falls within the final date range
             val policyDateValue = PolicyFilter.getEffectiveFilterDate(policy)
-            val startDateMatch = finalStart == null || (policyDateValue != null && policyDateValue >= finalStart)
-            val endDateMatch = finalEnd == null || (policyDateValue != null && policyDateValue < finalEnd)
+            val startDateMatch = rangeStart == null || (policyDateValue != null && policyDateValue >= rangeStart)
+            val endDateMatch = rangeEnd == null || (policyDateValue != null && policyDateValue < rangeEnd)
 
-            // Match against late policy filter
-            val lateMatch = if (params.showOnlyLate) {
-                com.viplove.licadvisornative.util.PolicyFilter.isPolicyLate(policy)
-            } else {
-                true
-            }
-
-            // A policy is included if it matches all criteria
-            searchMatch && planMatch && modeMatch && startDateMatch && endDateMatch && lateMatch
+            // A policy is included if it matches all criteria. The late check is the most
+            // expensive, so it runs last and only for policies that passed everything else.
+            searchMatch && planMatch && modeMatch && startDateMatch && endDateMatch &&
+                (!params.showOnlyLate || PolicyFilter.isPolicyLate(policy))
         }
     }
-
-    // --- Private Helper Functions for Date Parsing ---
 
     private fun parseFinancialYearString(yearString: String): Pair<Long?, Long?> {
         return PolicyFilter.getFinancialYearBounds(yearString)?.let { Pair(it.first, it.second) } ?: Pair(null, null)

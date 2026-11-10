@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -193,10 +194,11 @@ fun PolicyCard(policy: Policy) {
 fun DetailedPolicyCard(policy: Policy) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
-    val isLate = isPolicyLate(policy.doc, policy.mode, policy.enachDate, policy.lastPremiumPaidDate)
-    val dueDate = calculateDueDate(policy.doc, policy.mode, policy.enachDate)
-    val lateDays = calculateLateDays(policy.doc, policy.mode, policy.enachDate, policy.lastPremiumPaidDate)
-    val lastPaid = policy.lastPremiumPaidDate?.let { formatRawDate(it) }
+    // Date maths per card is costly while scrolling, so do it once per policy, not per recomposition.
+    val isLate = remember(policy) { isPolicyLate(policy.doc, policy.mode, policy.enachDate, policy.lastPremiumPaidDate) }
+    val dueDate = remember(policy) { calculateDueDate(policy.doc, policy.mode, policy.enachDate) }
+    val lateDays = remember(policy) { calculateLateDays(policy.doc, policy.mode, policy.enachDate, policy.lastPremiumPaidDate) }
+    val lastPaid = remember(policy) { policy.lastPremiumPaidDate?.let { formatRawDate(it) } }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -663,3 +665,25 @@ private fun formatRawDate(millis: Long): String {
 
 private const val PAYMENT_URL =
     "https://ebiz.licindia.in/D2CPM/?_ga=2.79975455.94153341.1756390897-1803416620.1748157402&_gac=1.115865716.1756390897.Cj0KCQjw_L_FBhDmARIsAItqgt4JucN53yqOrSxxkmQStkBybH4GXFjuyA9YxdwOL6rGc2-qRHH-de4aAq80EALw_wcB#DirectPayp"
+
+/** Shown in a list while its first load is in progress and there is nothing to display yet. */
+@Composable
+fun ListLoadingIndicator(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Dimens.GutterXl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Dimens.GutterMd)
+    ) {
+        CircularProgressIndicator()
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** Fade used when switching dashboard tabs. */
+const val TAB_FADE_MS = 140

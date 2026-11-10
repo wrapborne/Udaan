@@ -14,7 +14,10 @@ import com.viplove.licadvisornative.network.toPolicy
 import com.viplove.licadvisornative.network.toUser
 import com.viplove.licadvisornative.util.ErrorMapper
 import com.viplove.licadvisornative.util.PdfGenerator
+import com.google.firebase.firestore.Source
+import com.viplove.licadvisornative.network.ApiPolicy
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -147,15 +150,39 @@ class AgentViewModel : BasePolicyViewModel() {
         }
     }
 
+    private suspend fun showPolicies(apiPolicies: List<ApiPolicy>, stillLoading: Boolean) {
+        val prepared = withContext(Dispatchers.Default) {
+            val policyList = apiPolicies.map { it.toPolicy() }
+            val plans = listOf("All") + policyList.map { it.plan }.distinct().sorted()
+            val modes = mutableListOf("All")
+            modes.addAll(policyList.map { it.mode }.distinct().sorted())
+            if (policyList.any { it.isAnanda }) modes.add("ANANDA")
+            Triple(policyList, plans, modes.distinct())
+        }
+        _uiState.update {
+            (it as AgentUiState).copy(
+                isLoading = stillLoading, allPolicies = prepared.first,
+                availablePlans = prepared.second, availableModes = prepared.third, error = null
+            )
+        }
+        applyFilters()
+    }
+
     fun refreshData() {
         fetchMyPolicies()
         fetchDraftsAndSubmissions()
     }
 
+    private var filterJob: Job? = null
+
+    /** Filters off the main thread. A newer call cancels an older one, so the latest filters win. */
     override fun applyFilters() {
-        val currentState = _uiState.value as AgentUiState
-        val filtered = getFilteredPolicies(currentState)
-        _uiState.update { (it as AgentUiState).copy(filteredPolicies = filtered) }
+        filterJob?.cancel()
+        filterJob = viewModelScope.launch {
+            val snapshot = _uiState.value as AgentUiState
+            val filtered = withContext(Dispatchers.Default) { getFilteredPolicies(snapshot) }
+            _uiState.update { (it as AgentUiState).copy(filteredPolicies = filtered) }
+        }
     }
 
     fun downloadFormAsSeparatePdfs(form: ClientDataSheet, context: Context) {
@@ -245,21 +272,18 @@ class AgentViewModel : BasePolicyViewModel() {
                 _uiState.update { (it as AgentUiState).copy(isLoading = false, allPolicies = emptyList(), filteredPolicies = emptyList()) }
                 return@launch
             }
+            // Show the copy already on the phone at once; the server copy replaces it below.
+            if ((_uiState.value as AgentUiState).allPolicies.isEmpty()) {
+                val cached = runCatching { api.getPolicies(agentCode = agentCode, source = Source.CACHE) }.getOrNull()
+                val cachedBody = cached?.body()
+                if (cached?.isSuccessful == true && !cachedBody.isNullOrEmpty()) {
+                    showPolicies(cachedBody, stillLoading = true)
+                }
+            }
             try {
                 val response = api.getPolicies(agentCode = agentCode)
                 if (response.isSuccessful) {
-                    val policyList = response.body()?.map { it.toPolicy() } ?: emptyList()
-                    val plans = listOf("All") + policyList.map { it.plan }.distinct().sorted()
-                    val modes = mutableListOf("All")
-                    modes.addAll(policyList.map { it.mode }.distinct().sorted())
-                    if (policyList.any { it.isAnanda }) modes.add("ANANDA")
-                    _uiState.update {
-                        (it as AgentUiState).copy(
-                            isLoading = false, allPolicies = policyList,
-                            availablePlans = plans, availableModes = modes.distinct(), error = null
-                        )
-                    }
-                    applyFilters()
+                    showPolicies(response.body().orEmpty(), stillLoading = false)
                 } else {
                     _uiState.update { (it as AgentUiState).copy(isLoading = false, error = "Failed to load policies.") }
                 }

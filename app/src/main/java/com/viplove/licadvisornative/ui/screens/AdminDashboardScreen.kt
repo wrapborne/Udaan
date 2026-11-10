@@ -20,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
@@ -101,7 +103,13 @@ fun AdminDashboardScreen(
                     )
                 }
             }
-            when (selectedTab) {
+            Crossfade(
+                targetState = selectedTab,
+                modifier = Modifier.fillMaxSize(),
+                animationSpec = tween(TAB_FADE_MS),
+                label = "dashboardTab"
+            ) { tab ->
+            when (tab) {
                 AdminTab.PROPOSALS -> ProposalsTab(adminViewModel)
                 AdminTab.ULIP -> {
                     val proposalsState by adminViewModel.proposalsUiState.collectAsState()
@@ -137,6 +145,7 @@ fun AdminDashboardScreen(
                     )
                 }
                 AdminTab.GRAPHICS -> GraphicsSelectionScreen(navController = navController)
+            }
             }
         }
     }
@@ -538,16 +547,20 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
     // Pull-to-refresh state
     var isRefreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val isLoading = proposalsUiState?.isLoading == true
+    // The pull indicator stays until the reload it started has actually finished.
+    LaunchedEffect(isRefreshing, isLoading) {
+        if (isRefreshing && !isLoading) {
+            kotlinx.coroutines.delay(1200)
+            isRefreshing = false
+        }
+    }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
             isRefreshing = true
-            coroutineScope.launch {
-                adminViewModel.refreshData()
-                kotlinx.coroutines.delay(1000)
-                isRefreshing = false
-            }
+            adminViewModel.refreshData()
         },
         modifier = Modifier.fillMaxSize()
     ) {
@@ -693,12 +706,14 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
                     message = "Try adjusting the search or filters."
                 )
             }
+        } else if (policiesByAgent.isEmpty()) {
+            item { ListLoadingIndicator("Loading proposals…") }
         } else {
             policiesByAgent.forEach { (agentIdentifier, policies) ->
                 val (agentCode, agentName) = agentIdentifier
                 val isExpanded = agentCode in expandedAgentCodes
 
-                item {
+                item(key = "advisor_${agentCode}_$agentName", contentType = "advisor") {
                     val title = agentName.ifEmpty { agentCodeToEmailMap[agentCode] ?: "Unknown Advisor" }
                     val advisor = agentCodeToUserMap[agentCode]
                     ExpandableGroupCard(
@@ -736,9 +751,19 @@ fun ProposalsTab(adminViewModel: AdminViewModel) {
                                 Spacer(modifier = Modifier.width(Dimens.GutterXs))
                                 Text("Share PDF")
                             }
-                            policies.forEach { policy ->
-                                DetailedPolicyCard(policy = policy)
-                            }
+                        }
+                    }
+                }
+                // Policies are separate lazy rows, so expanding an advisor with hundreds of
+                // policies only builds the cards that are on screen.
+                if (isExpanded) {
+                    itemsIndexed(
+                        policies,
+                        key = { index, policy -> "policy_${agentCode}_${policy.policyId.ifBlank { index.toString() }}" },
+                        contentType = { _, _ -> "policy" }
+                    ) { _, policy ->
+                        Box(modifier = Modifier.padding(start = Dimens.GutterMd)) {
+                            DetailedPolicyCard(policy = policy)
                         }
                     }
                 }

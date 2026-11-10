@@ -61,6 +61,7 @@ object PdfGenerator {
     }
 
     private fun generateCombinedPdf(context: Context, lead: ClientDataSheet) {
+        PdfBoxInitializer.await()
         val document = PDDocument()
         try {
             addDataSheetPage(document, lead)
@@ -76,6 +77,7 @@ object PdfGenerator {
     }
 
     private fun generateDataSheetPdf(context: Context, lead: ClientDataSheet) {
+        PdfBoxInitializer.await()
         val document = PDDocument()
         try {
             addDataSheetPage(document, lead)
@@ -90,6 +92,7 @@ object PdfGenerator {
         val allUris = getAllDocumentUris(lead)
         if (allUris.isEmpty()) return
 
+        PdfBoxInitializer.await()
         val document = PDDocument()
         try {
             allUris.forEach { (label, uriString) ->

@@ -2,9 +2,11 @@ package com.viplove.licadvisornative.network
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.ktx.functions
@@ -16,7 +18,9 @@ import com.viplove.licadvisornative.model.CommissionBillPdfResult
 import com.viplove.licadvisornative.model.CommissionRowStatus
 import com.viplove.licadvisornative.model.PremiumDuePdfResult
 import com.viplove.licadvisornative.model.PremiumPdfImportApplyResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -251,30 +255,51 @@ class FirebaseApi {
         return Response.success(UploadResponse(url = url, path = path))
     }
 
-    suspend fun getPolicies(agentCode: String? = null): Response<List<ApiPolicy>> {
-        val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
-        val all = firestore.collection("policies").get().await().documents.map { it.toApiPolicy() }
-        val filtered = all.filter { policy ->
-            when {
-                !agentCode.isNullOrBlank() -> codesMatch(policy.agentCode, agentCode)
-                current.role == "superadmin" -> true
-                current.role == "admin" -> policy.adminId == current.id
-                else -> codesMatch(policy.agentCode, current.agencyCode)
-            }
+    /**
+     * @param source [Source.CACHE] returns the copy already on the phone without touching the
+     * network (it throws if nothing is cached yet); the default asks the server.
+     */
+    suspend fun getPolicies(agentCode: String? = null, source: Source = Source.DEFAULT): Response<List<ApiPolicy>> {
+        val current = loadCurrentUserDocument(source)?.toApiUser() ?: return errorResponse(401, "Not authenticated.")
+        val policies = firestore.collection("policies")
+        val documents = if (agentCode.isNullOrBlank() && current.role == "admin") {
+            // An admin only ever sees their own policies, so ask the server for just those
+            // instead of downloading every admin's. Both field spellings are queried because
+            // older documents use admin_id; the filter below then decides exactly as before.
+            val byAdminId = policies.whereEqualTo("adminId", current.id).get(source).await().documents
+            val byLegacyAdminId = policies.whereEqualTo("admin_id", current.id).get(source).await().documents
+            (byAdminId + byLegacyAdminId).distinctBy { it.id }
+        } else {
+            policies.get(source).await().documents
         }
-        return Response.success(filtered.sortedByDescending { it.doc ?: 0L })
+        // Converting and sorting thousands of documents is too slow for the main thread.
+        val sorted = withContext(Dispatchers.Default) {
+            documents.map { it.toApiPolicy() }
+                .filter { policy ->
+                    when {
+                        !agentCode.isNullOrBlank() -> codesMatch(policy.agentCode, agentCode)
+                        current.role == "superadmin" -> true
+                        current.role == "admin" -> policy.adminId == current.id
+                        else -> codesMatch(policy.agentCode, current.agencyCode)
+                    }
+                }
+                .sortedByDescending { it.doc ?: 0L }
+        }
+        return Response.success(sorted)
     }
 
     suspend fun batchStorePolicies(request: BatchPoliciesRequest): Response<BatchResult> {
         val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
         val duplicates = mutableListOf<String>()
+        val policyIndex = PolicyNumberIndex()
         request.policies.chunked(50).forEach { chunk ->
             chunk.forEach { payload ->
-                val existing = findPolicyDocumentByNumber(payload.policyNumber)
+                val existing = policyIndex.find(payload.policyNumber)
                 if (existing != null && !request.overwrite) {
                     duplicates += payload.policyNumber
                 } else {
                     val target = existing ?: firestore.collection("policies").document()
+                    if (existing == null) policyIndex.register(payload.policyNumber, target)
                     target.set(
                         mapOf(
                             "proposalNumber" to payload.proposalNumber,
@@ -302,16 +327,18 @@ class FirebaseApi {
     }
 
     suspend fun checkPolicyDuplicates(request: CheckDuplicatesRequest): Response<DuplicatesResponse> {
+        val policyIndex = PolicyNumberIndex()
         val duplicates = request.policyNumbers.distinct().filter { policyNumber ->
-            findPolicyDocumentByNumber(policyNumber) != null
+            policyIndex.find(policyNumber) != null
         }
         return Response.success(DuplicatesResponse(duplicates = duplicates))
     }
 
     suspend fun batchUpdatePaymentDates(request: BatchUpdatePaymentDatesRequest): Response<BatchUpdateResult> {
         var updated = 0
+        val policyIndex = PolicyNumberIndex()
         request.updates.forEach { change ->
-            val doc = findPolicyDocumentByNumber(change.policyNumber)
+            val doc = policyIndex.find(change.policyNumber)
             if (doc != null) {
                 doc.set(mapOf("lastPremiumPaidDate" to change.lastPremiumPaidDate), SetOptions.merge()).await()
                 updated++
@@ -333,10 +360,23 @@ class FirebaseApi {
         val now = System.currentTimeMillis()
         val adminId = current.adminRootId()
         val storedAgentCode = appStoredAgentCode(result.agentCode)
+        val policyIndex = PolicyNumberIndex()
+
+        // The advisor's payment history doesn't change during a due import, so it is read once
+        // (on the first row that needs it) instead of once per row.
+        var loadedPayments: List<DocumentSnapshot>? = null
+        val agentPayments: suspend () -> List<DocumentSnapshot> = {
+            loadedPayments ?: firestore.collection("premium_payment_history")
+                .whereEqualTo("agentCode", storedAgentCode)
+                .get()
+                .await()
+                .documents
+                .also { loadedPayments = it }
+        }
 
         result.rows.forEach { row ->
             val paidPayment = try {
-                findPaidPaymentForDue(storedAgentCode, row.policyNumber, row.fupMonth)
+                findPaidPaymentForDue(row.policyNumber, row.fupMonth, agentPayments)
             } catch (e: Exception) {
                 warnings += "Could not cross-check payment history for policy ${row.policyNumber}, FUP ${row.fupMonth}: ${e.localizedMessage ?: "permission denied"}"
                 null
@@ -384,7 +424,7 @@ class FirebaseApi {
             ).await()
 
             if (isAlreadyPaidByCommission) {
-                val policyDoc = findPolicyDocumentByNumber(row.policyNumber)
+                val policyDoc = policyIndex.find(row.policyNumber)
                 if (policyDoc != null) {
                     val paidDueDate = paidPayment?.getString("dueDate").orEmpty()
                     val adjustmentDate = paidPayment?.getString("adjustmentDate").orEmpty()
@@ -410,7 +450,7 @@ class FirebaseApi {
                 }
                 warnings += "Policy ${row.policyNumber} FUP ${row.fupMonth} was already paid in commission history, so due row was reconciled as paid."
             } else if (row.isLapsed) {
-                val policyDoc = findPolicyDocumentByNumber(row.policyNumber)
+                val policyDoc = policyIndex.find(row.policyNumber)
                 if (policyDoc != null) {
                     policyDoc.set(
                         mapOf(
@@ -451,6 +491,7 @@ class FirebaseApi {
         val now = System.currentTimeMillis()
         val adminId = current.adminRootId()
         val storedAgentCode = appStoredAgentCode(result.agentCode)
+        val policyIndex = PolicyNumberIndex()
 
         for (row in result.rows) {
             val paymentRef = firestore.collection("premium_payment_history")
@@ -488,7 +529,7 @@ class FirebaseApi {
             if (row.status == CommissionRowStatus.COOLING_OFF_REVERSAL) {
                 reversalRows++
                 val policyDoc = try {
-                    findPolicyDocumentByNumber(row.policyNumber)
+                    policyIndex.find(row.policyNumber)
                 } catch (e: Exception) {
                     return errorResponse(403, "Commission import failed while finding reversal policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
                 }
@@ -513,7 +554,7 @@ class FirebaseApi {
 
             val paidDueDateMillis = parseDateMillis(row.dueDate)
             val policyDoc = try {
-                findPolicyDocumentByNumber(row.policyNumber)
+                policyIndex.find(row.policyNumber)
             } catch (e: Exception) {
                 return errorResponse(403, "Commission import failed while finding policy ${row.policyNumber}: ${e.localizedMessage ?: "permission denied"}")
             }
@@ -637,16 +678,21 @@ class FirebaseApi {
     suspend fun batchStoreSummaries(request: BatchSummariesRequest): Response<BatchResult> {
         val current = currentUserProfile() ?: return errorResponse(401, "Not authenticated.")
         val duplicates = mutableListOf<String>()
+        // Read the collection once; summaries saved below are added so later rows still see them.
+        data class KnownSummary(val reportMonth: String?, val agencyCode: String?, val reference: DocumentReference)
+        val known = firestore.collection("premium_summaries").get().await().documents
+            .map { KnownSummary(it.getString("reportMonth"), it.getString("agencyCode"), it.reference) }
+            .toMutableList()
         request.summaries.forEach { payload ->
-            val existing = firestore.collection("premium_summaries").get().await().documents.firstOrNull {
-                it.getString("reportMonth") == payload.reportMonth &&
-                    codesMatch(it.getString("agencyCode"), payload.agencyCode)
+            val existing = known.firstOrNull {
+                it.reportMonth == payload.reportMonth && codesMatch(it.agencyCode, payload.agencyCode)
             }
             val key = "${payload.reportMonth}-${payload.agencyCode}"
             if (existing != null && !request.overwrite) {
                 duplicates += key
             } else {
                 val ref = existing?.reference ?: firestore.collection("premium_summaries").document()
+                    .also { known += KnownSummary(payload.reportMonth, payload.agencyCode, it) }
                 ref.set(
                     mapOf(
                         "reportMonth" to payload.reportMonth,
@@ -846,9 +892,9 @@ class FirebaseApi {
         return errorResponse(404, "Config not found.")
     }
 
-    private suspend fun loadCurrentUserDocument(): DocumentSnapshot? {
+    private suspend fun loadCurrentUserDocument(source: Source = Source.DEFAULT): DocumentSnapshot? {
         val uid = auth.currentUser?.uid ?: return null
-        val doc = firestore.collection("users").document(uid).get().await()
+        val doc = firestore.collection("users").document(uid).get(source).await()
         return doc.takeIf { it.exists() }
     }
 
@@ -864,23 +910,48 @@ class FirebaseApi {
         it.getString(field).equals(value, ignoreCase = true)
     }?.reference
 
-    private suspend fun findPolicyDocumentByNumber(policyNumber: String) =
-        firestore.collection("policies").get().await().documents.firstOrNull {
-            it.getString("policyNumber").equals(policyNumber, ignoreCase = true) ||
-                it.getString("policy_number").equals(policyNumber, ignoreCase = true)
-        }?.reference
+    /**
+     * Looks policies up by number for one upload or import. The collection is downloaded once,
+     * on the first lookup, instead of once per row. Matching is unchanged: case-insensitive,
+     * on either policyNumber or the older policy_number field, first matching document wins.
+     */
+    private inner class PolicyNumberIndex {
+        private var byNumber: MutableMap<String, DocumentReference>? = null
+
+        suspend fun find(policyNumber: String): DocumentReference? = load()[key(policyNumber)]
+
+        /** Records a policy created during this operation so later rows with the same number find it. */
+        suspend fun register(policyNumber: String, reference: DocumentReference) {
+            val index = load()
+            if (!index.containsKey(key(policyNumber))) index[key(policyNumber)] = reference
+        }
+
+        private suspend fun load(): MutableMap<String, DocumentReference> {
+            byNumber?.let { return it }
+            val documents = firestore.collection("policies").get().await().documents
+            val index = withContext(Dispatchers.Default) {
+                val map = HashMap<String, DocumentReference>(documents.size * 2)
+                documents.forEach { document ->
+                    listOfNotNull(document.getString("policyNumber"), document.getString("policy_number")).forEach { number ->
+                        if (!map.containsKey(key(number))) map[key(number)] = document.reference
+                    }
+                }
+                map
+            }
+            byNumber = index
+            return index
+        }
+
+        private fun key(policyNumber: String) = policyNumber.lowercase(Locale.ROOT)
+    }
 
     private suspend fun findPaidPaymentForDue(
-        agentCode: String,
         policyNumber: String,
-        dueMonth: String
+        dueMonth: String,
+        payments: suspend () -> List<DocumentSnapshot>
     ): DocumentSnapshot? {
         if (dueMonth.isBlank()) return null
-        return firestore.collection("premium_payment_history")
-            .whereEqualTo("agentCode", agentCode)
-            .get()
-            .await()
-            .documents
+        return payments()
             .firstOrNull { payment ->
                 payment.getString("policyNumber").equals(policyNumber, ignoreCase = true) &&
                     payment.getString("status") == CommissionRowStatus.PAID.name &&

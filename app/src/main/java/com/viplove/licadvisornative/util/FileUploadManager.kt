@@ -178,6 +178,7 @@ object FileUploadManager {
 
     private suspend fun readTextFromPdfUri(uri: Uri, contentResolver: ContentResolver): String = withContext(Dispatchers.IO) {
         contentResolver.openInputStream(uri)?.use { inputStream ->
+            PdfBoxInitializer.await()
             PDDocument.load(inputStream).use { document ->
                 PDFTextStripper().getText(document)
             }

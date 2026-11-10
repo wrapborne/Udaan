@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
@@ -109,7 +111,13 @@ fun AgentDashboardScreen(
                     )
                 }
             }
-            when (selectedTab) {
+            Crossfade(
+                targetState = selectedTab,
+                modifier = Modifier.fillMaxSize(),
+                animationSpec = tween(TAB_FADE_MS),
+                label = "dashboardTab"
+            ) { tab ->
+            when (tab) {
                 AgentTab.POLICIES -> AgentPoliciesTab(agentViewModel, agentUiState)
 
                 AgentTab.ULIP -> {
@@ -138,6 +146,7 @@ fun AgentDashboardScreen(
                 }
 
                 AgentTab.GRAPHICS -> GraphicsSelectionScreen(navController = navController)
+            }
             }
         }
     }
@@ -513,6 +522,14 @@ fun AgentPoliciesTab(
     // Pull-to-refresh state
     var isRefreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val isLoading = uiState?.isLoading == true
+    // The pull indicator stays until the reload it started has actually finished.
+    LaunchedEffect(isRefreshing, isLoading) {
+        if (isRefreshing && !isLoading) {
+            kotlinx.coroutines.delay(1200)
+            isRefreshing = false
+        }
+    }
 
     if (uiState == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -525,11 +542,7 @@ fun AgentPoliciesTab(
         isRefreshing = isRefreshing,
         onRefresh = {
             isRefreshing = true
-            coroutineScope.launch {
-                agentViewModel.refreshData()
-                kotlinx.coroutines.delay(1000)
-                isRefreshing = false
-            }
+            agentViewModel.refreshData()
         },
         modifier = Modifier.fillMaxSize()
     ) {
@@ -631,8 +644,14 @@ fun AgentPoliciesTab(
                     message = "Try adjusting the search or filters."
                 )
             }
+        } else if (uiState.filteredPolicies.isEmpty()) {
+            item { ListLoadingIndicator("Loading policies…") }
         } else {
-            items(uiState.filteredPolicies) { policy ->
+            itemsIndexed(
+                uiState.filteredPolicies,
+                key = { index, policy -> policy.policyId.ifBlank { "row_$index" } },
+                contentType = { _, _ -> "policy" }
+            ) { _, policy ->
                 DetailedPolicyCard(policy = policy)
             }
         }

@@ -33,6 +33,14 @@ android {
             )
             buildConfigField("String", "API_BASE_URL", "\"https://yourdomain.com/api/\"")
         }
+        // Same code and settings as release, but signed with the debug key so it can be
+        // installed for testing. Debug builds of Compose run much slower than what users get,
+        // so judge speed with this one: ./gradlew :app:assemblePreview
+        create("preview") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
