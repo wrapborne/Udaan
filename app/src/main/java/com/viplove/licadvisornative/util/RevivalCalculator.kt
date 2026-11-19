@@ -16,7 +16,7 @@ import kotlin.math.roundToLong
  *   Broken          interest factor for a part period, by whole months (1-12)
  *
  * Rules agreed for Udaan:
- *   - the fee is counted from the first unpaid due date; the card shows it once that is more than
+ *   - the fee is counted from the first unpaid due date on the DOC schedule; the card shows it once that is more than
  *     45 days ago;
  *   - several unpaid instalments use the mode column, then interest runs on from the latest due
  *     date to today (Broken factor); a single instalment is just the Broken factor;
@@ -111,11 +111,25 @@ object RevivalCalculator {
         return (((b + tz.getOffset(b)) - (a + tz.getOffset(a))) / DAY_MS).toInt()
     }
 
-    /** First unpaid premium = one premium period after the last paid one. Null when it cannot be known. */
-    fun firstUnpaidDue(lastPremiumPaidDate: Long?, mode: String): Long? {
+    /** Due date number k of the schedule that starts at `start` (k = 0 is `start` itself). */
+    private fun scheduleDate(start: Long, k: Int, months: Int): Long =
+        Calendar.getInstance().apply { timeInMillis = start; add(Calendar.MONTH, k * months) }.timeInMillis
+
+    /**
+     * First unpaid premium (LIC's FUP). Premiums fall due on the DOC schedule, so the recorded last-paid
+     * date is snapped back to the schedule date on or before it: for a backdated policy the first
+     * premium can show a later date (e.g. DOC 28-07-2024, "last paid" 02-09-2024 = the 28-07-2024
+     * premium). The next schedule date is the first unpaid one. Without a DOC, last paid + one period
+     * is used. Null when it cannot be known.
+     */
+    fun firstUnpaidDue(lastPremiumPaidDate: Long?, mode: String, doc: Long = 0L): Long? {
         val months = modeMonths(mode) ?: return null
         if (lastPremiumPaidDate == null || lastPremiumPaidDate <= 0L) return null
-        return Calendar.getInstance().apply { timeInMillis = lastPremiumPaidDate; add(Calendar.MONTH, months) }.timeInMillis
+        if (doc <= 0L) return scheduleDate(lastPremiumPaidDate, 1, months)
+        val paidDay = startOfDay(lastPremiumPaidDate)
+        var k = 0
+        while (startOfDay(scheduleDate(doc, k + 1, months)) <= paidDay) k += 1
+        return scheduleDate(doc, k + 1, months)
     }
 
     fun status(
@@ -125,12 +139,13 @@ object RevivalCalculator {
         lastPremiumPaidDate: Long?,
         today: Long = System.currentTimeMillis(),
         isUlip: Boolean = false,
+        doc: Long = 0L,
     ): RevivalStatus {
         // ULIP policies have no late fee.
         if (isUlip) return RevivalStatus.Normal
         val months = modeMonths(mode) ?: return RevivalStatus.Normal
         if (premium <= 0.0) return RevivalStatus.Normal
-        val firstDue = firstUnpaidDue(lastPremiumPaidDate, mode) ?: return RevivalStatus.Normal
+        val firstDue = firstUnpaidDue(lastPremiumPaidDate, mode, doc) ?: return RevivalStatus.Normal
         val daysOverdue = daysBetween(firstDue, today)
         if (daysOverdue <= LATE_AFTER_DAYS) return RevivalStatus.Normal
 
@@ -138,13 +153,12 @@ object RevivalCalculator {
         if (startOfDay(today) > startOfDay(revivalEnd)) return RevivalStatus.RevivalPeriodOver(daysOverdue, firstDue)
 
         // Unpaid instalments: every due date from the first unpaid one up to today.
+        // Each due date is counted from the first one (not added step by step), so a 31st stays on the 31st.
         var instalments = 0
         var latestDue = firstDue
-        val cursor = Calendar.getInstance().apply { timeInMillis = firstDue }
-        while (startOfDay(cursor.timeInMillis) <= startOfDay(today)) {
+        while (startOfDay(scheduleDate(firstDue, instalments, months)) <= startOfDay(today)) {
+            latestDue = scheduleDate(firstDue, instalments, months)
             instalments += 1
-            latestDue = cursor.timeInMillis
-            cursor.add(Calendar.MONTH, months)
         }
 
         val base = if (instalments <= 1) 1.0 else rates.factor(column(months), instalments) ?: return RevivalStatus.Normal

@@ -206,7 +206,7 @@ fun DetailedPolicyCard(policy: Policy) {
     // Late fee (LIC revival interest) once the first unpaid premium is more than 45 days old.
     val revivalRates = remember { runCatching { RevivalRates.fromAssets(context) }.getOrNull() }
     val revival = revivalRates?.let {
-        RevivalCalculator.status(it, policy.premium, policy.mode, policy.lastPremiumPaidDate, isUlip = policy.isUlip)
+        RevivalCalculator.status(it, policy.premium, policy.mode, policy.lastPremiumPaidDate, isUlip = policy.isUlip, doc = policy.doc)
     } ?: RevivalStatus.Normal
     val lateFee = revival as? RevivalStatus.Late
     val revivalOver = revival as? RevivalStatus.RevivalPeriodOver
