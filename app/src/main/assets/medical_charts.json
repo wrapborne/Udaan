@@ -1,0 +1,605 @@
+{
+ "source": "LIC Non-Medical Chart for Ready Reference (Jose Antony, Dev Officer, Ernakulam Dvn); minors' documents from the Smart app juvenile chart. All amounts in rupees.",
+ "groupIIPlans": [
+  "714",
+  "715",
+  "720",
+  "721",
+  "733"
+ ],
+ "groupIPlans": [
+  "717",
+  "732",
+  "734",
+  "736",
+  "745",
+  "748",
+  "749",
+  "752",
+  "771",
+  "774",
+  "867",
+  "873",
+  "881",
+  "886",
+  "911",
+  "912"
+ ],
+ "singlePremiumPlans": [
+  "717",
+  "749",
+  "883",
+  "911"
+ ],
+ "termPlans": [
+  "875",
+  "877",
+  "955",
+  "887",
+  "894"
+ ],
+ "chart2NotApplicable": [
+  "875",
+  "877"
+ ],
+ "rsa125Plans": [
+  "715",
+  "720",
+  "721",
+  "734",
+  "748",
+  "749",
+  "911"
+ ],
+ "ageBands": [
+  [
+   18,
+   35
+  ],
+  [
+   36,
+   45
+  ],
+  [
+   46,
+   50
+  ],
+  [
+   51,
+   55
+  ],
+  [
+   56,
+   60
+  ]
+ ],
+ "limits": {
+  "PNM": [
+   {
+    "grp1": 5000000,
+    "grp2": 3000000,
+    "vmer": 10000000,
+    "cihr": 5000000
+   },
+   {
+    "grp1": 2500000,
+    "grp2": 2000000,
+    "vmer": 5000000,
+    "cihr": 5000000
+   },
+   {
+    "grp1": 1300000,
+    "grp2": 1000000,
+    "vmer": 2000000,
+    "cihr": 2000000
+   },
+   {
+    "withMer": 1300000
+   },
+   {
+    "withMer": 300000
+   }
+  ],
+  "SNM": [
+   {
+    "grp1": 3000000,
+    "grp2": 2500000,
+    "vmer": 5000000,
+    "cihr": 5000000
+   },
+   {
+    "grp1": 2000000,
+    "grp2": 1500000,
+    "vmer": 3000000,
+    "cihr": 3000000
+   },
+   {
+    "grp1": 1000000,
+    "grp2": 800000,
+    "vmer": 1500000,
+    "cihr": 1500000
+   },
+   {
+    "withMer": 1300000
+   },
+   {
+    "withMer": 300000
+   }
+  ],
+  "NMG": [
+   {
+    "grp1": 1200000,
+    "grp2": 800000,
+    "vmer": 2000000,
+    "cihr": 2000000
+   },
+   {
+    "grp1": 800000,
+    "grp2": 500000,
+    "vmer": 2000000,
+    "cihr": 2000000
+   },
+   {
+    "grp1": 500000,
+    "grp2": 300000,
+    "vmer": 600000,
+    "cihr": 600000
+   },
+   {
+    "withMer": 300000
+   },
+   null
+  ],
+  "STUDENT": [
+   {
+    "grp1": 2500000,
+    "grp2": 2000000,
+    "vmer": 3000000,
+    "cihr": 3000000
+   },
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ "nmgFemaleNoProofCap": {
+  "ssc": 1000000,
+  "hsc": 1500000
+ },
+ "singlePremiumLimits": [
+  {
+   "ages": [
+    18,
+    35
+   ],
+   "standard": 1500000,
+   "plan749Option2": 500000
+  },
+  {
+   "ages": [
+    36,
+    45
+   ],
+   "standard": 1000000,
+   "plan749Option2": 400000
+  },
+  {
+   "ages": [
+    46,
+    50
+   ],
+   "standard": 1000000,
+   "plan749Option2": 300000
+  },
+  {
+   "ages": [
+    51,
+    60
+   ],
+   "standard": 300000,
+   "plan749Option2": null
+  },
+  {
+   "ages": [
+    61,
+    65
+   ],
+   "standard": 300000,
+   "plan749Option2": null,
+   "withMer": true
+  }
+ ],
+ "minorLimits": [
+  {
+   "ages": [
+    0,
+    4
+   ],
+   "nonMedical": 4000000
+  },
+  {
+   "ages": [
+    5,
+    9
+   ],
+   "nonMedical": 4000000
+  },
+  {
+   "ages": [
+    10,
+    17
+   ],
+   "nonMedical": 1500000
+  }
+ ],
+ "minorDocuments": [
+  {
+   "ages": [
+    0,
+    4
+   ],
+   "text": "Latest school report, if attending school. Immunisation record of the child above ₹20 lakh."
+  },
+  {
+   "ages": [
+    5,
+    9
+   ],
+   "text": "Height and weight in ACR/MHR, and latest school report."
+  },
+  {
+   "ages": [
+    10,
+    17
+   ],
+   "text": "Height and weight in ACR/MHR, and latest school/college report."
+  }
+ ],
+ "minorPwb": {
+  "withoutPwb": 2500000,
+  "withPwb": 5000000
+ },
+ "reportCodes": {
+  "A": [
+   "FBS",
+   "RUA"
+  ],
+  "B": [
+   "FBS",
+   "Lipidogram",
+   "RUA"
+  ],
+  "C": [
+   "ECG",
+   "FBS"
+  ],
+  "D": [
+   "ECG",
+   "FBS",
+   "RUA"
+  ],
+  "E": [
+   "SBT-13",
+   "RUA",
+   "HB%"
+  ],
+  "F": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "HB%"
+  ],
+  "G": [
+   "ECG",
+   "FBS",
+   "RUA",
+   "Lipidogram",
+   "HB%"
+  ],
+  "H": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "HB%"
+  ],
+  "I": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "HB%",
+   "HbA1c"
+  ],
+  "J": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "Haemogram"
+  ],
+  "K": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "Haemogram",
+   "HbA1c"
+  ],
+  "L": [
+   "RUA",
+   "Lipidogram",
+   "ELISA (HIV)",
+   "HB%"
+  ],
+  "M": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "HB%",
+   "HbA1c",
+   "CTMT"
+  ],
+  "N": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "Haemogram",
+   "HbA1c",
+   "CTMT"
+  ],
+  "P": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "Haemogram",
+   "HbA1c",
+   "CTMT",
+   "Chest X-ray"
+  ],
+  "X": [
+   "ECG",
+   "SBT-13",
+   "RUA",
+   "Haemogram",
+   "HbA1c",
+   "CTMT",
+   "Chest X-ray",
+   "Anti HCV",
+   "USG Abdomen & Pelvis",
+   "Spot Urine Micro Albumin",
+   "2D Echo with Doppler"
+  ]
+ },
+ "chart1": {
+  "note": "Special reports for PNM & SNM, SUC up to ₹50 lakh. Columns: ages 18-35, 36-45, 46-50, 51-55, 56-60.",
+  "bands": [
+   300000,
+   1300000,
+   2000000,
+   2500000,
+   3000000,
+   5000000
+  ],
+  "rows": [
+   [
+    "Nil",
+    "Nil",
+    "Nil",
+    "MER",
+    "MER"
+   ],
+   [
+    "Nil",
+    "Nil",
+    "Nil",
+    "MER",
+    "MER+G"
+   ],
+   [
+    "Nil",
+    "Nil",
+    "MER+B",
+    "MER+F",
+    "MER+F"
+   ],
+   [
+    "Nil",
+    "Nil",
+    "MER+B",
+    "MER+F",
+    "MER+K"
+   ],
+   [
+    "Nil",
+    "Nil",
+    "MER+F",
+    "MER+F",
+    "MER+K"
+   ],
+   [
+    "Nil",
+    "MER+F",
+    "MER+M",
+    "MER+M",
+    "MER+M"
+   ]
+  ]
+ },
+ "chart2": {
+  "note": "Special reports for NMG, and for everyone above ₹50 lakh. Columns: ages 18-35, 36-45, 46-50, 51-55, 56 and above. '#' = MER for Group II plans.",
+  "bands": [
+   300000,
+   400000,
+   500000,
+   600000,
+   800000,
+   1200000,
+   2000000,
+   3000000,
+   10000000,
+   250000000,
+   399999999,
+   null
+  ],
+  "rows": [
+   [
+    "Nil",
+    "Nil",
+    "Nil",
+    "MER",
+    "MER+C"
+   ],
+   [
+    "Nil",
+    "Nil",
+    "Nil",
+    "MER+A",
+    "MER+G"
+   ],
+   [
+    "Nil",
+    "Nil",
+    "Nil/#",
+    "MER+D",
+    "MER+G"
+   ],
+   [
+    "Nil",
+    "Nil/#",
+    "MER",
+    "MER+D",
+    "MER+G"
+   ],
+   [
+    "Nil",
+    "Nil/#",
+    "MER+A",
+    "MER+D",
+    "MER+G"
+   ],
+   [
+    "Nil/#",
+    "MER",
+    "MER+A",
+    "MER+G",
+    "MER+G"
+   ],
+   [
+    "MER",
+    "MER",
+    "MER+F",
+    "MER+F",
+    "MER+F"
+   ],
+   [
+    "MER+L",
+    "MER+E",
+    "MER+H",
+    "MER+J",
+    "MER+K"
+   ],
+   [
+    "MER+H",
+    "MER+I",
+    "MER+M",
+    "MER+M",
+    "MER+M"
+   ],
+   [
+    "MER+K",
+    "MER+N",
+    "MER+N",
+    "MER+N",
+    "MER+N"
+   ],
+   [
+    "MER+N",
+    "MER+N",
+    "MER+N",
+    "MER+N",
+    "MER+P"
+   ],
+   [
+    "MER+X",
+    "MER+X",
+    "MER+X",
+    "MER+X",
+    "MER+X+PSA"
+   ]
+  ]
+ },
+ "cihrPlans": [
+  "714",
+  "715"
+ ],
+ "incomeMultiples": [
+  {
+   "ages": [
+    18,
+    35
+   ],
+   "savings": 35,
+   "studentOrMinor": null,
+   "term": 25,
+   "cihr": 12
+  },
+  {
+   "ages": [
+    36,
+    45
+   ],
+   "savings": 25,
+   "studentOrMinor": 5,
+   "term": 20,
+   "cihr": 10
+  },
+  {
+   "ages": [
+    46,
+    50
+   ],
+   "savings": 20,
+   "studentOrMinor": 5,
+   "term": 15,
+   "cihr": 7
+  },
+  {
+   "ages": [
+    51,
+    55
+   ],
+   "savings": 15,
+   "studentOrMinor": 5,
+   "term": 15,
+   "cihr": 5
+  },
+  {
+   "ages": [
+    56,
+    120
+   ],
+   "savings": 10,
+   "studentOrMinor": null,
+   "term": 10,
+   "cihr": 3
+  }
+ ],
+ "incomeProof": [
+  {
+   "upTo": 2500000,
+   "text": "Not needed: income as stated in the proposal form and ACR/MHR"
+  },
+  {
+   "upTo": 5000000,
+   "text": "Personal Financial Questionnaire (PFQ)"
+  },
+  {
+   "upTo": null,
+   "text": "Special MHR with Form 16 or last 3 years' ITRs with computation of income"
+  }
+ ],
+ "groupUnconfirmedPlans": [
+  "770",
+  "888",
+  "889",
+  "890"
+ ]
+}
