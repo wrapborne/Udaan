@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +61,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.viplove.licadvisornative.model.Policy
+import com.viplove.licadvisornative.util.RevivalCalculator
+import com.viplove.licadvisornative.util.RevivalRates
+import com.viplove.licadvisornative.util.RevivalStatus
 import com.viplove.licadvisornative.ui.components.StatTile
 import com.viplove.licadvisornative.ui.theme.BrandDanger
 import com.viplove.licadvisornative.ui.theme.BrandDangerBg
@@ -75,6 +80,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.text.NumberFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +203,17 @@ fun DetailedPolicyCard(policy: Policy) {
     val dueDate = calculateDueDate(policy.doc, policy.mode, policy.enachDate)
     val lateDays = calculateLateDays(policy.doc, policy.mode, policy.enachDate, policy.lastPremiumPaidDate)
     val lastPaid = policy.lastPremiumPaidDate?.let { formatRawDate(it) }
+    // Late fee (LIC revival interest) once the first unpaid premium is more than 45 days old.
+    val revivalRates = remember { runCatching { RevivalRates.fromAssets(context) }.getOrNull() }
+    val revival = revivalRates?.let {
+        RevivalCalculator.status(it, policy.premium, policy.mode, policy.lastPremiumPaidDate)
+    } ?: RevivalStatus.Normal
+    val lateFee = revival as? RevivalStatus.Late
+    val revivalOver = revival as? RevivalStatus.RevivalPeriodOver
+    val overdueDays = lateFee?.daysOverdue ?: revivalOver?.daysOverdue
+    val shownDue = (lateFee?.firstUnpaidDue ?: revivalOver?.firstUnpaidDue)
+        ?.let { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date(it)) } ?: dueDate
+    val showLate = isLate || overdueDays != null
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -246,7 +263,7 @@ fun DetailedPolicyCard(policy: Policy) {
                         }
                     }
                 }
-                PolicyBadge(policy = policy, isLate = isLate, lateDays = lateDays)
+                PolicyBadge(policy = policy, isLate = showLate, lateDays = overdueDays ?: lateDays)
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.GutterXs)) {
@@ -264,10 +281,10 @@ fun DetailedPolicyCard(policy: Policy) {
                     color = if (lastPaid != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (isLate) "Due: $dueDate  LATE" else "Due: $dueDate",
+                    text = if (showLate) "Due: $shownDue  LATE" else "Due: $dueDate",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (isLate) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (isLate) FontWeight.SemiBold else FontWeight.Normal
+                    color = if (showLate) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (showLate) FontWeight.SemiBold else FontWeight.Normal
                 )
                 if (policy.enachDate.isNotEmpty()) {
                     Text(
@@ -278,12 +295,32 @@ fun DetailedPolicyCard(policy: Policy) {
                 }
             }
 
+            if (lateFee != null) {
+                RevivalAlert(text = "${lateFee.daysOverdue} days overdue · " +
+                    if (lateFee.instalmentsDue > 1) "${lateFee.instalmentsDue} premiums due" else "late fee added")
+                RevivalSplit(late = lateFee)
+            } else if (revivalOver != null) {
+                RevivalAlert(text = "${revivalOver.daysOverdue} days overdue · revival period (5 years) is over")
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                if (lateFee != null) Column {
+                    Text(
+                        text = "Pay now (incl. late fee)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = rupees(lateFee.payable),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else Column {
                     Text(
                         text = "Premium",
                         style = MaterialTheme.typography.labelSmall,
@@ -300,7 +337,7 @@ fun DetailedPolicyCard(policy: Policy) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     FilledIconButton(
-                        onClick = { sharePolicyOnWhatsApp(context, policy, dueDate) },
+                        onClick = { sharePolicyOnWhatsApp(context, policy, if (showLate) shownDue else dueDate, lateFee) },
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = BrandWhatsApp,
                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -353,7 +390,60 @@ private fun PolicyBadge(policy: Policy, isLate: Boolean, lateDays: Int) {
     }
 }
 
-private fun sharePolicyOnWhatsApp(context: android.content.Context, policy: Policy, dueDate: String) {
+private fun rupees(amount: Long): String = "₹" + NumberFormat.getIntegerInstance(Locale("en", "IN")).format(amount)
+
+@Composable
+private fun RevivalAlert(text: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.error
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Dimens.GutterMd, vertical = Dimens.GutterSm),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(text = text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun RevivalSplit(late: RevivalStatus.Late) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = Dimens.GutterMd, vertical = Dimens.GutterSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.GutterXs)
+        ) {
+            val premiumLabel = if (late.instalmentsDue > 1)
+                "Premium (${late.instalmentsDue} × ${rupees(Math.round(late.instalmentPremium))})" else "Premium (1 due)"
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(premiumLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(rupees(late.premiumTotal), style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Late fee", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                Text(rupees(late.lateFee), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+            Text(
+                text = "Worked out for today, " + SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date()),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun sharePolicyOnWhatsApp(context: android.content.Context, policy: Policy, dueDate: String, late: RevivalStatus.Late? = null) {
     val message = buildString {
         append("*Policy Details*\n\n")
         append("*Name:* ${policy.shortName}\n")
@@ -362,6 +452,10 @@ private fun sharePolicyOnWhatsApp(context: android.content.Context, policy: Poli
         append("*Premium:* ₹${policy.premium}\n")
         append("*Mode:* ${policy.mode}\n")
         append("*Due Date:* $dueDate\n")
+        if (late != null) {
+            append("*Late fee:* ${rupees(late.lateFee)}\n")
+            append("*Pay now (incl. late fee):* ${rupees(late.payable)}\n")
+        }
         if (policy.enachDate.isNotEmpty()) append("*ENACH:* ${policy.enachDate}\n")
         append("\n_From LIC Advisor App_")
     }
