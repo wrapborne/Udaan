@@ -22,7 +22,8 @@ import kotlin.math.roundToLong
  *     date to today (Broken factor); a single instalment is just the Broken factor;
  *   - part months count as whole months (110 days = 4 months);
  *   - past 5 years from the first unpaid premium the policy can no longer be revived;
- *   - no GST is shown.
+ *   - no GST is shown;
+ *   - ULIP policies never show a late fee.
  */
 class RevivalRates(private val rows: Map<Int, Map<String, Double>>) {
     fun factor(column: String, n: Int): Double? = rows[n]?.get(column)
@@ -123,7 +124,10 @@ object RevivalCalculator {
         mode: String,
         lastPremiumPaidDate: Long?,
         today: Long = System.currentTimeMillis(),
+        isUlip: Boolean = false,
     ): RevivalStatus {
+        // ULIP policies have no late fee.
+        if (isUlip) return RevivalStatus.Normal
         val months = modeMonths(mode) ?: return RevivalStatus.Normal
         if (premium <= 0.0) return RevivalStatus.Normal
         val firstDue = firstUnpaidDue(lastPremiumPaidDate, mode) ?: return RevivalStatus.Normal

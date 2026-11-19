@@ -64,6 +64,12 @@ class RevivalCalculatorTest {
     }
 
     @Test
+    fun ulipPoliciesNeverShowALateFee() {
+        val status = RevivalCalculator.status(rates, 25000.0, "Yearly", date(2025, 8, 1), date(2026, 11, 19), isUlip = true)
+        assertTrue(status is RevivalStatus.Normal)
+    }
+
+    @Test
     fun ratesFileHasEveryColumn() {
         assertEquals(1.00792, rates.factor("Broken", 1)!!, 1e-9)
         assertEquals(1.09726, rates.factor("Broken", 12)!!, 1e-9)
