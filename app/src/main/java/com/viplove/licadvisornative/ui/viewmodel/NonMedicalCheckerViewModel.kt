@@ -75,9 +75,12 @@ class NonMedicalCheckerViewModel(application: Application) : AndroidViewModel(ap
     companion object {
         fun amount(text: String): Long = text.filter { it.isDigit() }.toLongOrNull() ?: 0
 
-        /** "14-03-1996", "14/03/1996" or "14.03.1996". */
+        /** "14031996" (digits as typed, shown as 14-03-1996), "14-03-1996", "14/03/1996" or "14.03.1996". */
         fun parseDob(text: String): Calendar? {
-            val parts = text.trim().split('-', '/', '.').map { it.trim() }
+            val trimmed = text.trim()
+            val parts = if (trimmed.length == 8 && trimmed.all { it.isDigit() })
+                listOf(trimmed.substring(0, 2), trimmed.substring(2, 4), trimmed.substring(4, 8))
+            else trimmed.split('-', '/', '.').map { it.trim() }
             if (parts.size != 3) return null
             val (d, m, y) = parts.map { it.toIntOrNull() ?: return null }
             if (y < 1900 || m !in 1..12 || d !in 1..31) return null

@@ -120,4 +120,14 @@ class MedicalUnderwriterTest {
         assertEquals(1, r.group); assertFalse(r.groupConfirmed); assertTrue(r.notes[0].contains("not confirmed"))
         assertTrue(run(base.copy(dob = dobForAge(30), sumAssured = 1_000_000)).groupConfirmed)
     }
+
+    @Test fun dateOfBirthTypedAsDigitsOrWithDashes() {
+        val parse = com.viplove.licadvisornative.ui.viewmodel.NonMedicalCheckerViewModel.Companion::parseDob
+        for (text in listOf("12101995", "12-10-1995", "12/10/1995")) {
+            val cal = parse(text)!!
+            assertEquals(listOf(12, 9, 1995), listOf(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH), cal.get(Calendar.YEAR)))
+        }
+        assertEquals(null, parse("31021995")) // 31 February
+        assertEquals(null, parse("1210199"))
+    }
 }

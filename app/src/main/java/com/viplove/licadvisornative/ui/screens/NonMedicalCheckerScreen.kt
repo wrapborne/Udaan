@@ -45,7 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -86,9 +90,11 @@ fun NonMedicalCheckerScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GutterSm), verticalAlignment = Alignment.CenterVertically) {
                     LabeledTextField(
                         value = s.dob,
-                        onValueChange = { value -> checkerViewModel.update { it.copy(dob = value) } },
+                        // Digits only; the dashes are drawn by DateDashes (the number keyboard has no dash).
+                        onValueChange = { value -> checkerViewModel.update { it.copy(dob = value.filter { c -> c.isDigit() }.take(8)) } },
                         label = "Date of birth",
                         helper = "DD-MM-YYYY",
+                        visualTransformation = DateDashes,
                         keyboardType = KeyboardType.Number,
                         modifier = Modifier.weight(1f),
                         isMono = true,
@@ -241,7 +247,7 @@ fun NonMedicalCheckerScreen(
             confirmButton = {
                 TextButton(onClick = {
                     pickerState.selectedDateMillis?.let { millis ->
-                        val text = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(millis))
+                        val text = SimpleDateFormat("ddMMyyyy", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(millis))
                         checkerViewModel.update { it.copy(dob = text) }
                     }
                     showDatePicker = false
@@ -249,6 +255,32 @@ fun NonMedicalCheckerScreen(
             },
             dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
         ) { DatePicker(state = pickerState) }
+    }
+}
+
+/** Shows typed digits "14031996" as "14-03-1996". */
+private object DateDashes : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text
+        val out = buildString {
+            digits.forEachIndexed { index, c ->
+                append(c)
+                if ((index == 1 || index == 3) && index != digits.lastIndex) append('-')
+            }
+        }
+        val mapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 1 -> offset
+                offset <= 3 -> offset + (if (digits.length > 2) 1 else 0)
+                else -> offset + (if (digits.length > 4) 2 else 1)
+            }.coerceAtMost(out.length)
+            override fun transformedToOriginal(offset: Int): Int = when {
+                offset <= 2 -> offset
+                offset <= 5 -> offset - 1
+                else -> offset - 2
+            }.coerceIn(0, digits.length)
+        }
+        return TransformedText(AnnotatedString(out), mapping)
     }
 }
 
